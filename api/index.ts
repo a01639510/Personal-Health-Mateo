@@ -18,7 +18,7 @@ const GEMINI_MODEL = 'gemini-3.5-flash';
 
 function isRetryableGeminiError(error: any): boolean {
   const msg = (error?.message || '').toString();
-  return /UNAVAILABLE|"code":503|overloaded|high demand/i.test(msg);
+  return /UNAVAILABLE|"code":503|overloaded|high demand|RESOURCE_EXHAUSTED|"code":429|quota/i.test(msg);
 }
 
 async function generateWithRetry(params: Parameters<typeof ai.models.generateContent>[0], retries = 2, baseDelayMs = 1000) {
@@ -666,7 +666,7 @@ app.post('/api/admin/translate-recipes', async (req, res) => {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
 
-    const limitNum = Math.min(30, Math.max(1, parseInt((req.body?.limit ?? req.query?.limit ?? '10') as string, 10) || 10));
+    const limitNum = Math.min(50, Math.max(1, parseInt((req.body?.limit ?? req.query?.limit ?? '40') as string, 10) || 40));
 
     const { data: pending, error: fetchError } = await supabase
       .from('recipes')
@@ -683,10 +683,16 @@ app.post('/api/admin/translate-recipes', async (req, res) => {
     let translated = 0;
     const errors: string[] = [];
 
-    for (const recipe of pending || []) {
+    if (pending && pending.length > 0) {
       try {
-        const ingredientNames = (recipe.ingredients || []).map((i: any) => i.name);
-        const promptText = `Traduce al español lo siguiente de una receta de cocina. Título: "${recipe.title}". Ingredientes: ${JSON.stringify(ingredientNames)}. Instrucciones: "${(recipe.instructions || '').slice(0, 4000)}". Devuelve una traducción natural y culinaria, no literal palabra por palabra.`;
+        const batchPayload = pending.map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          ingredient_names: (r.ingredients || []).map((i: any) => i.name),
+          instructions: (r.instructions || '').slice(0, 3000),
+        }));
+
+        const promptText = `Traduce al español ${batchPayload.length} recetas de cocina. Para cada receta traduce el título, la lista de nombres de ingredientes (mismo orden y misma cantidad de elementos, no omitas ninguno) y las instrucciones de preparación. Usa lenguaje natural y culinario en español, no traducción literal palabra por palabra. Recetas en JSON: ${JSON.stringify(batchPayload)}`;
 
         const response = await generateWithRetry({
           model: GEMINI_MODEL,
@@ -696,35 +702,56 @@ app.post('/api/admin/translate-recipes', async (req, res) => {
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                title_es: { type: Type.STRING },
-                instructions_es: { type: Type.STRING },
-                ingredient_names_es: { type: Type.ARRAY, items: { type: Type.STRING } },
+                recipes: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.STRING },
+                      title_es: { type: Type.STRING },
+                      instructions_es: { type: Type.STRING },
+                      ingredient_names_es: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    },
+                    required: ['id', 'title_es', 'instructions_es', 'ingredient_names_es'],
+                  },
+                },
               },
-              required: ['title_es', 'instructions_es', 'ingredient_names_es'],
+              required: ['recipes'],
             },
           },
-        });
+        }, 3, 15000);
 
         const parsed = JSON.parse((response.text || '{}').trim());
-        const translatedNames: string[] = parsed.ingredient_names_es || [];
-        const ingredientsEs = (recipe.ingredients || []).map((ing: any, idx: number) => ({
-          name: translatedNames[idx] || ing.name,
-          measure: ing.measure,
-        }));
+        const byId = new Map<string, any>((parsed.recipes || []).map((r: any) => [r.id, r]));
 
-        const { error: patchError } = await supabase
-          .from('recipes')
-          .update({
-            title_es: parsed.title_es || recipe.title,
-            instructions_es: parsed.instructions_es || recipe.instructions,
-            ingredients_es: ingredientsEs,
-          })
-          .eq('id', recipe.id);
-        if (patchError) throw patchError;
+        for (const recipe of pending) {
+          try {
+            const translation = byId.get(recipe.id);
+            if (!translation) throw new Error('Gemini no devolvió traducción para esta receta');
 
-        translated++;
-      } catch (err: any) {
-        errors.push(`${recipe.id}: ${err.message || err}`);
+            const translatedNames: string[] = translation.ingredient_names_es || [];
+            const ingredientsEs = (recipe.ingredients || []).map((ing: any, idx: number) => ({
+              name: translatedNames[idx] || ing.name,
+              measure: ing.measure,
+            }));
+
+            const { error: patchError } = await supabase
+              .from('recipes')
+              .update({
+                title_es: translation.title_es || recipe.title,
+                instructions_es: translation.instructions_es || recipe.instructions,
+                ingredients_es: ingredientsEs,
+              })
+              .eq('id', recipe.id);
+            if (patchError) throw patchError;
+
+            translated++;
+          } catch (err: any) {
+            errors.push(`${recipe.id}: ${err.message || err}`);
+          }
+        }
+      } catch (batchErr: any) {
+        errors.push(`batch: ${batchErr.message || batchErr}`);
       }
     }
 
