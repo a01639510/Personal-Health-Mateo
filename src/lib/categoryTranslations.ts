@@ -18,18 +18,21 @@ const CATEGORY_ES: Record<string, string> = {
   Vegetarian: 'Vegetariano',
 };
 
+// Lista verificada directamente contra los valores reales en la tabla `recipes`
+// (no todos coinciden con los nombres "oficiales" de TheMealDB, ej. "France" en vez de "French").
 const AREA_ES: Record<string, string> = {
-  American: 'Estadounidense',
+  Algerian: 'Argelina',
+  Argentina: 'Argentina',
+  Australian: 'Australiana',
   British: 'Británica',
   Canadian: 'Canadiense',
   Chinese: 'China',
   Croatian: 'Croata',
-  Dutch: 'Holandesa',
   Egyptian: 'Egipcia',
   Filipino: 'Filipina',
-  French: 'Francesa',
+  France: 'Francesa',
   Greek: 'Griega',
-  Indian: 'India',
+  India: 'India',
   Irish: 'Irlandesa',
   Italian: 'Italiana',
   Jamaican: 'Jamaiquina',
@@ -38,15 +41,22 @@ const AREA_ES: Record<string, string> = {
   Malaysian: 'Malasia',
   Mexican: 'Mexicana',
   Moroccan: 'Marroquí',
+  Netherlands: 'Holandesa',
+  Norway: 'Noruega',
   Polish: 'Polaca',
   Portuguese: 'Portuguesa',
   Russian: 'Rusa',
+  'Saudi Arabian': 'Saudí',
+  Slovakia: 'Eslovaca',
   Spanish: 'Española',
+  Syrian: 'Siria',
   Thai: 'Tailandesa',
   Tunisian: 'Tunecina',
   Turkish: 'Turca',
   Ukrainian: 'Ucraniana',
+  'United States': 'Estadounidense',
   Uruguayan: 'Uruguaya',
+  Venezuela: 'Venezolana',
   Vietnamese: 'Vietnamita',
 };
 
