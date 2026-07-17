@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Settings } from 'lucide-react';
+import { Download, Settings, Dumbbell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
   title: string;
   onTitleTap?: () => void;
   onOpenPreferences?: () => void;
+  onOpenFitnessProfile?: () => void;
 }
 
-export default function Header({ title, onTitleTap, onOpenPreferences }: HeaderProps) {
+export default function Header({ title, onTitleTap, onOpenPreferences, onOpenFitnessProfile }: HeaderProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [showIOSHint, setShowIOSHint] = useState(false);
@@ -54,6 +55,14 @@ export default function Header({ title, onTitleTap, onOpenPreferences }: HeaderP
         </button>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenFitnessProfile}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--bg-surface)] active:opacity-70 transition-opacity cursor-pointer"
+            title="Mi Perfil Fitness"
+          >
+            <Dumbbell className="w-[15px] h-[15px] text-[var(--text-primary)]/70" strokeWidth={2} />
+          </button>
+
           <button
             onClick={onOpenPreferences}
             className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--bg-surface)] active:opacity-70 transition-opacity cursor-pointer"

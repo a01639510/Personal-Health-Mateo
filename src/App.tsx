@@ -11,6 +11,7 @@ import CookbookDetail from './components/CookbookDetail';
 import PantryInventory from './components/PantryInventory';
 import BarcodeScanner from './components/BarcodeScanner';
 import PreferencesSheet from './components/PreferencesSheet';
+import FitnessProfileSheet from './components/FitnessProfileSheet';
 import { SpoonacularRecipeSummary } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -27,6 +28,7 @@ export default function App() {
   const [selectedCookbookId, setSelectedCookbookId] = useState<string | null>(null);
   const [scanSubView, setScanSubView] = useState<'scan' | 'inventory' | 'barcode-scanner'>('scan');
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showFitnessProfile, setShowFitnessProfile] = useState(false);
 
   // Scanned / Loaded ingredients state
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
@@ -174,10 +176,16 @@ export default function App() {
     <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)]">
       <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
         {showGlobalHeader && (
-          <Header title={headerTitle} onTitleTap={() => handleTabChange('scan')} onOpenPreferences={() => setShowPreferences(true)} />
+          <Header
+            title={headerTitle}
+            onTitleTap={() => handleTabChange('scan')}
+            onOpenPreferences={() => setShowPreferences(true)}
+            onOpenFitnessProfile={() => setShowFitnessProfile(true)}
+          />
         )}
 
         <PreferencesSheet open={showPreferences} onClose={() => setShowPreferences(false)} />
+        <FitnessProfileSheet open={showFitnessProfile} onClose={() => setShowFitnessProfile(false)} />
 
         {/* Main Content Area */}
         <main className="flex-grow w-full px-4 pb-tabbar">

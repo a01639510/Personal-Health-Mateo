@@ -26,8 +26,18 @@ function readPreferences(): Preferences {
   }
 }
 
+// useSyncExternalStore requires getSnapshot to return a stable reference when
+// nothing changed, or React re-renders in an infinite loop. Cache the parsed
+// value keyed on the raw string so repeated calls don't allocate a new object.
+let cachedRaw: string | null | undefined;
+let cachedValue: Preferences = DEFAULT_PREFERENCES;
+
 export function getPreferences(): Preferences {
-  return readPreferences();
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw === cachedRaw) return cachedValue;
+  cachedRaw = raw;
+  cachedValue = readPreferences();
+  return cachedValue;
 }
 
 export function setPreferences(update: Partial<Preferences>): void {
