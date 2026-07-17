@@ -1,32 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Space Grotesk", "Inter", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif;
+}
+
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tabbar-height: 62px;
+
+  /* Cal AI-style macro ring palette */
+  --ring-calories: #0a0a0a;
+  --ring-protein: #ff3b5c;
+  --ring-carbs: #ff9f0a;
+  --ring-fat: #0a84ff;
+  --ring-track: #f0f0f2;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #ffffff;
+  color: #0a0a0a;
+  font-feature-settings: "tnum" 1;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.2);
+  background: rgba(0, 0, 0, 0.12);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.4);
+  background: rgba(0, 0, 0, 0.2);
 }
 
-/* Base custom styles if needed */
-body {
-  font-family: var(--font-sans);
-  background-color: #f8fafc; /* bg-slate-50 */
-  color: #0f172a; /* text-slate-900 */
-  -webkit-tap-highlight-color: transparent;
+/* iOS safe-area utilities */
+.pt-safe {
+  padding-top: var(--safe-top);
+}
+.pb-safe {
+  padding-bottom: var(--safe-bottom);
+}
+.pb-tabbar {
+  padding-bottom: calc(var(--tabbar-height) + var(--safe-bottom) + 16px);
+}
+
+/* Hide number input spinners for a native-feeling numeric field */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
