@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { History, Loader2, ArrowUpRight, AlertCircle, ShoppingBag } from 'lucide-react';
-import { motion } from 'motion/react';
+import { History, Sparkles, Loader2, Calendar, ChefHat, ArrowUpRight, AlertCircle, ShoppingBag } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { PantryScan } from '../types';
 
 interface ScanHistoryProps {
@@ -32,10 +32,10 @@ export default function ScanHistory({ onLoadIngredients }: ScanHistoryProps) {
     } catch (err: any) {
       console.error(err);
       setError({
-        message: err.isSchemaMissing
-          ? 'Falta configurar la base de datos'
-          : 'No pudimos cargar el historial',
-        details: err.message || 'Verifica la configuración de Supabase.',
+        message: err.isSchemaMissing 
+          ? 'Estructura de Base de Datos Pendiente'
+          : 'No pudimos consultar el historial de escaneos',
+        details: err.message || 'Verifica la configuración de Supabase URL y Service Role Key.',
         isSchemaMissing: err.isSchemaMissing
       });
     } finally {
@@ -45,11 +45,11 @@ export default function ScanHistory({ onLoadIngredients }: ScanHistoryProps) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-20">
-        <Loader2 className="w-8 h-8 text-black/60 animate-spin mb-4" strokeWidth={2} />
-        <h3 className="text-[16px] font-bold text-black mb-1">Cargando historial</h3>
-        <p className="text-black/40 text-[13px] max-w-[240px] leading-relaxed">
-          Leyendo tus escaneos anteriores...
+      <div className="flex flex-col items-center justify-center text-center py-20 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <Loader2 className="w-10 h-10 text-emerald-600 animate-spin mb-4" />
+        <h3 className="font-display font-semibold text-lg text-slate-800 mb-1">Cargando Historial</h3>
+        <p className="text-slate-500 text-sm max-w-xs">
+          Leyendo los últimos escaneos de ingredientes de tu refrigerador...
         </p>
       </div>
     );
@@ -58,43 +58,43 @@ export default function ScanHistory({ onLoadIngredients }: ScanHistoryProps) {
   if (error) {
     if (error.isSchemaMissing) {
       return (
-        <div className="pt-10 text-center space-y-5">
-          <div className="bg-[#FFF6E5] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
-            <AlertCircle className="w-7 h-7 text-[#b8860b]" strokeWidth={1.75} />
+        <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-xl mx-auto text-center space-y-5 shadow-sm">
+          <div className="bg-amber-50 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-amber-100">
+            <AlertCircle className="w-8 h-8 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-[16px] font-bold text-black mb-1.5">Tablas no creadas en Supabase</h3>
-            <p className="text-[13px] text-black/40 leading-relaxed px-4">
-              La conexión con Supabase es correcta, pero falta crear la tabla <strong className="text-black/60">"pantry_scans"</strong>.
+            <h3 className="font-display font-semibold text-lg text-slate-800 mb-2">Tablas no creadas en Supabase</h3>
+            <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed">
+              La conexión con Supabase es correcta, pero aún falta crear la tabla <strong className="text-slate-700">"pantry_scans"</strong> para guardar tu historial.
             </p>
-            <p className="text-[12px] text-black/30 mt-2 px-6 leading-relaxed">
-              Ve a la pestaña "Guardadas" para encontrar el script SQL de inicialización.
+            <p className="text-xs text-slate-400 mt-2 max-w-sm mx-auto">
+              Por favor, dirígete a la pestaña <strong className="text-slate-600">"Recetas Guardadas"</strong> donde encontrarás un asistente con el script SQL de inicialización de un clic.
             </p>
           </div>
           <button
             onClick={fetchHistory}
-            className="bg-black text-white font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer shadow-sm"
           >
-            Reintentar
+            Reintentar Carga
           </button>
         </div>
       );
     }
 
     return (
-      <div className="pt-10 text-center space-y-5">
-        <div className="bg-[#FFF1F0] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
-          <AlertCircle className="w-7 h-7 text-[#ff3b30]" strokeWidth={1.75} />
+      <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-xl mx-auto text-center space-y-5 shadow-sm">
+        <div className="bg-rose-50 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-rose-100">
+          <AlertCircle className="w-8 h-8 text-rose-500" />
         </div>
         <div>
-          <h3 className="text-[16px] font-bold text-black mb-1.5">{error.message}</h3>
-          {error.details && <p className="text-[13px] text-black/40 leading-relaxed px-4">{error.details}</p>}
+          <h3 className="font-display font-semibold text-lg text-slate-800 mb-2">{error.message}</h3>
+          {error.details && <p className="text-sm text-slate-500">{error.details}</p>}
         </div>
         <button
           onClick={fetchHistory}
-          className="bg-black text-white font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer shadow-sm"
         >
-          Reintentar
+          Reintentar Carga
         </button>
       </div>
     );
@@ -102,70 +102,80 @@ export default function ScanHistory({ onLoadIngredients }: ScanHistoryProps) {
 
   if (scans.length === 0) {
     return (
-      <div className="pt-10 text-center space-y-4">
-        <div className="bg-[#F5F5F7] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
-          <History className="w-7 h-7 text-black/40" strokeWidth={1.75} />
+      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm">
+        <div className="bg-slate-50 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-slate-200">
+          <History className="w-8 h-8 text-slate-500" />
         </div>
-        <h3 className="text-[16px] font-bold text-black">Historial vacío</h3>
-        <p className="text-[13px] text-black/40 leading-relaxed px-4">
-          Escanea una foto en "Escanear" y tus registros aparecerán aquí automáticamente.
+        <h3 className="font-display font-semibold text-lg text-slate-800">Historial de escaneo vacío</h3>
+        <p className="text-sm text-slate-500">
+          Aún no has realizado escaneos de fotos. Sube una foto en la pestaña de "Escanear" y verás tus registros guardados aquí de forma automática.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="px-0.5">
-        <h2 className="text-[19px] font-bold text-black">Historial</h2>
-        <p className="text-[12px] text-black/40">Vuelve a usar ingredientes de escaneos anteriores</p>
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display font-bold text-xl text-slate-800">Historial de Análisis de Refri</h2>
+        <p className="text-xs text-slate-500">Consulta los ingredientes que tenías en escaneos anteriores y recárgalos fácilmente</p>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4 max-w-3xl mx-auto">
         {scans.map((scan, idx) => {
           const items = scan.detected_items || [];
-          const dateStr = new Date(scan.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+          const dateStr = new Date(scan.created_at).toLocaleString();
 
           return (
             <motion.div
               key={scan.id}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: Math.min(idx * 0.04, 0.24) }}
-              className="flex items-center gap-3 bg-[#F5F5F7] rounded-[24px] p-3"
+              transition={{ delay: idx * 0.05 }}
+              className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 hover:border-slate-300 transition-all shadow-sm"
             >
-              {scan.photo_url ? (
-                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white flex-shrink-0">
-                  <img
-                    src={scan.photo_url}
-                    alt="Miniatura de escaneo"
-                    className="w-full h-full object-cover"
-                    referrerPolicy="no-referrer"
-                    loading="lazy"
-                  />
-                </div>
-              ) : (
-                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center flex-shrink-0">
-                  <ShoppingBag className="w-5 h-5 text-black/25" strokeWidth={1.75} />
-                </div>
-              )}
+              <div className="flex items-start gap-4">
+                {/* Photo Preview if uploaded */}
+                {scan.photo_url ? (
+                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-200 flex-shrink-0 bg-slate-50">
+                    <img
+                      src={scan.photo_url}
+                      alt="Miniatura de escaneo"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0 text-slate-400">
+                    <ShoppingBag className="w-6 h-6" />
+                  </div>
+                )}
 
-              <div className="flex-grow min-w-0">
-                <h4 className="text-[13.5px] font-bold text-black leading-snug">
-                  {items.length} ingredientes
-                </h4>
-                <p className="text-[11.5px] text-black/40 capitalize line-clamp-1 mt-0.5">
-                  {items.map(item => item.name).join(', ')}
-                </p>
-                <p className="text-[10.5px] text-black/30 mt-1 font-medium">{dateStr}</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
+                    <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{dateStr}</span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-slate-800">
+                      {items.length} ingredientes detectados
+                    </h4>
+                    <p className="text-xs text-slate-500 capitalize max-w-xl leading-relaxed">
+                      {items.map(item => item.name).join(', ')}
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              {/* Action */}
               <button
                 onClick={() => onLoadIngredients(items.map(i => i.name))}
-                className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0 cursor-pointer active:scale-90 transition-transform"
-                title="Usar ingredientes"
+                className="flex items-center justify-center gap-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-emerald-600 border border-slate-200 px-4 py-2.5 rounded-xl transition-all cursor-pointer whitespace-nowrap self-start md:self-center shadow-sm"
               >
-                <ArrowUpRight className="w-4 h-4 text-black/60" strokeWidth={2} />
+                <span>Usar ingredientes</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
               </button>
             </motion.div>
           );

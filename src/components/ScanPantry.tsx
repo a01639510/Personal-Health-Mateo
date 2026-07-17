@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Plus, X, Loader2, ArrowRight, RotateCcw } from 'lucide-react';
+import { Camera, Plus, Trash2, Sparkles, RefreshCw, X, Loader2, ListPlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DetectedItem } from '../types';
 
@@ -7,20 +7,13 @@ interface ScanPantryProps {
   onSearchRecipes: (ingredients: string[]) => void;
 }
 
-const CATEGORIES = ['Verdura', 'Fruta', 'Lácteo', 'Carne', 'Huevo', 'Salsa', 'Condimento', 'Legumbre', 'Panadería', 'Pescado', 'Otros'];
-
-const CONFIDENCE_DOT: Record<string, string> = {
-  alta: '#34c759',
-  media: '#ff9f0a',
-  baja: '#ff3b30',
-};
-
 export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [loadingStep, setLoadingStep] = useState<string>('');
   const [detectedIngredients, setDetectedIngredients] = useState<DetectedItem[]>([]);
   const [newIngredientName, setNewIngredientName] = useState('');
+  const [newIngredientCategory, setNewIngredientCategory] = useState('Otros');
   const [editingIngredient, setEditingIngredient] = useState<{
     index: number;
     name: string;
@@ -47,13 +40,14 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
 
   const startScan = async (base64Image: string) => {
     setIsScanning(true);
-    setLoadingStep('Subiendo imagen...');
-
+    setLoadingStep('Subiendo imagen al almacén de Supabase...');
+    
+    // Cycle beautiful loading states to keep user engaged
     const timers = [
-      setTimeout(() => setLoadingStep('Analizando con visión IA...'), 2000),
-      setTimeout(() => setLoadingStep('Identificando ingredientes...'), 4500),
-      setTimeout(() => setLoadingStep('Clasificando por categoría...'), 7000),
-      setTimeout(() => setLoadingStep('Guardando resultados...'), 9000),
+      setTimeout(() => setLoadingStep('Ejecutando visión por computadora con Claude 3.5 Sonnet...'), 2000),
+      setTimeout(() => setLoadingStep('Analizando ingredientes, empaques y texturas...'), 4500),
+      setTimeout(() => setLoadingStep('Clasificando en categorías y estimando confianza...'), 7000),
+      setTimeout(() => setLoadingStep('Guardando reporte de análisis en la base de datos...'), 9000),
     ];
 
     try {
@@ -72,11 +66,11 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
 
       const data = await response.json();
       setDetectedIngredients(data.ingredients || []);
-
+      
       if (data.ingredients.length === 0) {
         setError({
-          message: 'No detectamos ingredientes.',
-          details: 'Prueba con mejor luz o agrégalos manualmente abajo.'
+          message: 'No pudimos detectar ningún ingrediente reconocible.',
+          details: 'Prueba tomando la foto con mejor iluminación o agrega tus ingredientes manualmente abajo.'
         });
       }
     } catch (err: any) {
@@ -84,7 +78,7 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
       console.error(err);
       setError({
         message: 'Error al escanear la imagen',
-        details: err.message || 'Verifica tus API Keys o intenta con otra foto.'
+        details: err.message || 'Por favor verifica tus API Keys o intenta de nuevo con otra foto.'
       });
     } finally {
       setIsScanning(false);
@@ -102,12 +96,13 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
 
     const newItem: DetectedItem = {
       name: newIngredientName.trim().toLowerCase(),
-      category: 'Otros',
+      category: newIngredientCategory,
       confidence: 'alta'
     };
 
     setDetectedIngredients(prev => [...prev, newItem]);
     setNewIngredientName('');
+    setNewIngredientCategory('Otros');
   };
 
   const handleSaveIngredientEdit = (e: React.FormEvent) => {
@@ -139,46 +134,43 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
   };
 
   return (
-    <div className="pt-1">
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleImageUpload}
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-      />
-
+    <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm max-w-4xl mx-auto">
+      {/* Dynamic Main Stage */}
       <AnimatePresence mode="wait">
         {!imagePreview ? (
           /* START SCANNING SCREEN */
           <motion.div
             key="start-screen"
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex flex-col pt-2"
+            exit={{ opacity: 0, y: -15 }}
+            className="flex flex-col items-center justify-center text-center py-12 px-4"
           >
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full aspect-[4/5] rounded-[32px] bg-[#F5F5F7] flex flex-col items-center justify-center gap-5 cursor-pointer active:scale-[0.99] transition-transform px-8"
-            >
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.06)]">
-                <Camera className="w-7 h-7 text-black/80" strokeWidth={1.75} />
-              </div>
-              <div className="text-center">
-                <h2 className="text-[19px] font-bold text-black tracking-tight">¿Qué tienes en tu refri?</h2>
-                <p className="text-[13px] text-black/40 mt-1.5 leading-relaxed max-w-[240px]">
-                  Toma una foto y la IA detecta tus ingredientes al instante
-                </p>
-              </div>
+            <div className="bg-emerald-50 p-6 rounded-full border border-emerald-100 mb-6 shadow-sm animate-pulse">
+              <Camera className="w-12 h-12 text-emerald-600" />
             </div>
+            
+            <h2 className="font-display font-semibold text-2xl text-slate-800 tracking-tight mb-3">
+              ¿Qué tienes en tu refrigerador hoy?
+            </h2>
+            <p className="text-slate-500 text-sm max-w-md mb-8">
+              Toma una foto de tu refrigerador o alacena abierta. Nuestra inteligencia de visión identificará los ingredientes y te sugerirá recetas al instante.
+            </p>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+            />
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="mt-5 w-full flex items-center justify-center gap-2 bg-black text-white font-semibold text-[15px] py-4 rounded-full active:scale-[0.98] transition-transform cursor-pointer"
+              className="group flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-4 rounded-2xl text-base shadow-md shadow-emerald-600/10 hover:shadow-emerald-600/20 transition-all cursor-pointer scale-100 active:scale-95"
             >
-              <Camera className="w-[18px] h-[18px]" strokeWidth={2} />
+              <Camera className="w-5 h-5 text-white group-hover:rotate-6 transition-transform" />
               <span>Escanear refrigerador</span>
             </button>
           </motion.div>
@@ -189,76 +181,82 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center pt-4"
+            className="flex flex-col items-center justify-center text-center py-12"
           >
-            <div className="relative w-full aspect-[4/5] rounded-[32px] overflow-hidden bg-[#F5F5F7]">
+            {/* Image Preview with overlay animation */}
+            <div className="relative w-64 h-64 rounded-3xl overflow-hidden border border-slate-200 shadow-md mb-8">
               <img
                 src={imagePreview}
                 alt="Escaneando"
-                className="w-full h-full object-cover opacity-50 blur-[1px]"
+                className="w-full h-full object-cover opacity-60 blur-[1px]"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-transparent h-1/4 animate-[bounce_2.5s_infinite]" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
-                  <Loader2 className="w-6 h-6 text-black animate-spin" strokeWidth={2} />
-                </div>
-                <p className="text-[12px] font-medium text-black/60 bg-white/80 backdrop-blur px-3.5 py-1.5 rounded-full max-w-[85%] text-center leading-snug">
-                  {loadingStep}
-                </p>
-              </div>
+              {/* Scan beam */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-emerald-500/30 to-transparent h-1/4 animate-[bounce_2.5s_infinite] border-b-2 border-emerald-400" />
             </div>
+
+            <Loader2 className="w-8 h-8 text-emerald-600 animate-spin mb-4" />
+            <h3 className="font-display font-medium text-lg text-slate-800 mb-2">Analizando Alimentos</h3>
+            <p className="text-slate-500 text-xs font-mono max-w-sm px-6 h-10 transition-all duration-300">
+              {loadingStep}
+            </p>
           </motion.div>
         ) : (
           /* RESULTS / EDIT CHIPS SCREEN */
           <motion.div
             key="results-screen"
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-5 pt-2"
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-6"
           >
             {/* Header of results screen */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl overflow-hidden flex-shrink-0 bg-[#F5F5F7]">
-                <img
-                  src={imagePreview}
-                  alt="Pantry Preview"
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div className="flex items-center gap-4">
+                <div className="relative w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
+                  <img
+                    src={imagePreview}
+                    alt="Pantry Preview"
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-display font-semibold text-lg text-slate-800">Ingredientes Detectados</h3>
+                  <p className="text-xs text-slate-500">Edita la lista para que sea exacta antes de buscar recetas.</p>
+                </div>
               </div>
-              <div className="flex-grow min-w-0">
-                <h3 className="text-[16px] font-bold text-black">Ingredientes detectados</h3>
-                <p className="text-[12px] text-black/40">Toca para editar cada uno</p>
-              </div>
+
               <button
                 onClick={resetAll}
-                className="flex items-center justify-center w-9 h-9 rounded-full bg-[#F5F5F7] active:bg-black/[0.08] transition-colors cursor-pointer flex-shrink-0"
-                title="Tomar otra foto"
+                className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 transition-colors bg-white hover:bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-center shadow-sm cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 text-black/60" strokeWidth={2} />
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Tomar otra foto</span>
               </button>
             </div>
 
             {/* Error view */}
             {error && (
-              <div className="bg-[#FFF1F0] text-[#B4231A] p-3.5 rounded-2xl text-[12px] leading-relaxed">
-                <div className="font-semibold">{error.message}</div>
-                {error.details && <p className="opacity-80 mt-0.5">{error.details}</p>}
+              <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-2xl text-xs space-y-1">
+                <div className="font-semibold flex items-center gap-1.5 text-red-700">
+                  <X className="w-4 h-4 text-red-500" />
+                  <span>{error.message}</span>
+                </div>
+                {error.details && <p className="text-red-600/90 pl-5">{error.details}</p>}
               </div>
             )}
 
             {/* Chips Grid */}
             <div>
-              <div className="flex items-center justify-between mb-2.5 px-0.5">
-                <span className="text-[11px] font-semibold text-black/35 uppercase tracking-wide">
-                  {detectedIngredients.length} ingredientes
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-mono text-slate-500 font-semibold uppercase tracking-wider">
+                  Ingredientes ({detectedIngredients.length})
                 </span>
                 {detectedIngredients.length > 0 && (
                   <button
                     onClick={() => setDetectedIngredients([])}
-                    className="text-[11px] font-medium text-[#ff3b30] cursor-pointer"
+                    className="text-[10px] font-mono text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                   >
                     Borrar todo
                   </button>
@@ -266,153 +264,204 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
               </div>
 
               {detectedIngredients.length === 0 ? (
-                <div className="bg-[#F5F5F7] rounded-2xl p-6 text-center text-black/30 text-[13px]">
-                  Aún no hay ingredientes. Agrega algunos abajo.
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                  Aún no hay ingredientes. Escribe algunos abajo para comenzar.
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2.5 max-h-72 overflow-y-auto p-1">
                   <AnimatePresence>
-                    {detectedIngredients.map((item, index) => (
-                      <motion.button
-                        key={`${item.name}-${index}`}
-                        initial={{ scale: 0.85, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.85, opacity: 0 }}
-                        onClick={() => setEditingIngredient({ index, name: item.name, category: item.category, confidence: item.confidence })}
-                        className="flex items-center gap-1.5 pl-3 pr-2 py-2 rounded-full bg-[#F5F5F7] text-black text-[13px] cursor-pointer active:scale-95 transition-transform"
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ backgroundColor: CONFIDENCE_DOT[item.confidence] || CONFIDENCE_DOT.alta }}
-                        />
-                        <span className="capitalize font-medium">{item.name}</span>
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteIngredient(index);
-                          }}
-                          className="text-black/30 ml-0.5 p-0.5"
+                    {detectedIngredients.map((item, index) => {
+                      const confidenceColors = {
+                        alta: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                        media: 'bg-amber-50 text-amber-700 border-amber-200',
+                        baja: 'bg-rose-50 text-rose-700 border-rose-200'
+                      };
+
+                      return (
+                        <motion.div
+                          key={`${item.name}-${index}`}
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          exit={{ scale: 0.8, opacity: 0 }}
+                          onClick={() => setEditingIngredient({ index, name: item.name, category: item.category, confidence: item.confidence })}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-2xl border bg-white border-slate-200 hover:border-slate-300 text-slate-700 text-sm cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] hover:bg-slate-50 shadow-xs group"
+                          title="Haz clic para editar"
                         >
-                          <X className="w-3.5 h-3.5" strokeWidth={2.5} />
-                        </span>
-                      </motion.button>
-                    ))}
+                          <span className="capitalize font-medium group-hover:text-emerald-700 transition-colors">{item.name}</span>
+                          <span className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded-md font-mono border border-slate-100">
+                            {item.category}
+                          </span>
+                          
+                          {/* Confidence Indicator */}
+                          <span className={`text-[10px] font-mono px-1 py-0.5 rounded-md border uppercase font-medium ${confidenceColors[item.confidence] || confidenceColors.alta}`}>
+                            {item.confidence}
+                          </span>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteIngredient(index);
+                            }}
+                            className="text-slate-400 hover:text-rose-500 transition-colors ml-1 p-0.5 cursor-pointer"
+                            title="Eliminar ingrediente"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                 </div>
               )}
             </div>
 
             {/* Add Manual Ingredient Form */}
-            <form onSubmit={handleAddIngredient} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={newIngredientName}
-                onChange={(e) => setNewIngredientName(e.target.value)}
-                placeholder="Agregar ingrediente..."
-                className="flex-grow bg-[#F5F5F7] rounded-full px-4 py-3 text-[14px] text-black placeholder-black/30 focus:outline-none"
-              />
-              <button
-                type="submit"
-                className="flex items-center justify-center w-11 h-11 rounded-full bg-black text-white flex-shrink-0 cursor-pointer active:scale-95 transition-transform disabled:opacity-30"
-                disabled={!newIngredientName.trim()}
-              >
-                <Plus className="w-5 h-5" strokeWidth={2.25} />
-              </button>
+            <form onSubmit={handleAddIngredient} className="bg-slate-50 p-4 rounded-2xl border border-slate-150">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Agregar ingrediente manual</label>
+                  <input
+                    type="text"
+                    value={newIngredientName}
+                    onChange={(e) => setNewIngredientName(e.target.value)}
+                    placeholder="Ej. Cebolla, pollo, pimiento..."
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                  />
+                </div>
+
+                <div className="w-full sm:w-48">
+                  <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Categoría</label>
+                  <select
+                    value={newIngredientCategory}
+                    onChange={(e) => setNewIngredientCategory(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Verdura">Verdura</option>
+                    <option value="Fruta">Fruta</option>
+                    <option value="Lácteo">Lácteo</option>
+                    <option value="Carne">Carne</option>
+                    <option value="Huevo">Huevo</option>
+                    <option value="Salsa">Salsa</option>
+                    <option value="Condimento">Condimento</option>
+                    <option value="Legumbre">Legumbre</option>
+                    <option value="Panadería">Panadería</option>
+                    <option value="Pescado">Pescado</option>
+                    <option value="Otros">Otros</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-emerald-600 px-4 py-2 rounded-xl text-sm font-semibold transition-all self-end h-[38px] w-full sm:w-auto cursor-pointer shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Agregar</span>
+                </button>
+              </div>
             </form>
 
             {/* Search Recipes CTA Button */}
-            <div className="pt-1">
+            <div className="pt-4 flex justify-end">
               <button
                 onClick={triggerSearch}
                 disabled={detectedIngredients.length === 0}
-                className="w-full flex items-center justify-center gap-2 bg-black disabled:opacity-30 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-full transition-transform active:scale-[0.98] cursor-pointer text-[15px]"
+                className="w-full sm:w-auto group flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold px-8 py-3.5 rounded-xl transition-all shadow-md shadow-emerald-500/10 cursor-pointer text-sm"
               >
-                <span>Buscar recetas</span>
-                <ArrowRight className="w-[18px] h-[18px]" strokeWidth={2} />
+                <Sparkles className="w-4 h-4 text-white animate-pulse" />
+                <span>Buscar Recetas Sugeridas</span>
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Ingredient Editor Bottom Sheet */}
+      {/* Ingredient Editor Modal */}
       <AnimatePresence>
         {editingIngredient && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-xs p-4"
             onClick={() => setEditingIngredient(null)}
           >
             <motion.div
-              initial={{ y: 60, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 60, opacity: 0 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="w-full max-w-[430px] bg-white rounded-t-[28px] p-6 pb-safe space-y-5"
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              transition={{ duration: 0.15 }}
+              className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-xl space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-9 h-1 bg-black/10 rounded-full mx-auto" />
-
-              <div className="flex items-center justify-between">
-                <h3 className="text-[17px] font-bold text-black">Editar ingrediente</h3>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="font-display font-semibold text-base text-slate-800">Editar Ingrediente</h3>
                 <button
                   onClick={() => setEditingIngredient(null)}
-                  className="w-8 h-8 rounded-full bg-[#F5F5F7] flex items-center justify-center cursor-pointer"
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
-                  <X className="w-4 h-4 text-black/50" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleSaveIngredientEdit} className="space-y-5">
+              <form onSubmit={handleSaveIngredientEdit} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-semibold text-black/35 uppercase tracking-wide mb-2">Nombre</label>
+                  <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Nombre</label>
                   <input
                     type="text"
                     value={editingIngredient.name}
                     onChange={(e) => setEditingIngredient(prev => prev ? { ...prev, name: e.target.value } : null)}
-                    className="w-full bg-[#F5F5F7] rounded-2xl px-4 py-3.5 text-[15px] text-black focus:outline-none"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                     required
                     autoFocus
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-black/35 uppercase tracking-wide mb-2">Categoría</label>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORIES.map((cat) => (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setEditingIngredient(prev => prev ? { ...prev, category: cat } : null)}
-                        className={`px-3.5 py-2 rounded-full text-[12.5px] font-medium cursor-pointer transition-colors ${
-                          editingIngredient.category === cat
-                            ? 'bg-black text-white'
-                            : 'bg-[#F5F5F7] text-black/60'
-                        }`}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
+                  <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Categoría</label>
+                  <select
+                    value={editingIngredient.category}
+                    onChange={(e) => setEditingIngredient(prev => prev ? { ...prev, category: e.target.value } : null)}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="Verdura">Verdura</option>
+                    <option value="Fruta">Fruta</option>
+                    <option value="Lácteo">Lácteo</option>
+                    <option value="Carne">Carne</option>
+                    <option value="Huevo">Huevo</option>
+                    <option value="Salsa">Salsa</option>
+                    <option value="Condimento">Condimento</option>
+                    <option value="Legumbre">Legumbre</option>
+                    <option value="Panadería">Panadería</option>
+                    <option value="Pescado">Pescado</option>
+                    <option value="Otros">Otros</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-black/35 uppercase tracking-wide mb-2">Confianza</label>
+                  <label className="block text-[10px] font-mono text-slate-500 uppercase mb-1.5">Nivel de Confianza</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(['alta', 'media', 'baja'] as const).map((level) => {
+                      const levelColors = {
+                        alta: 'border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100',
+                        media: 'border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100',
+                        baja: 'border-rose-200 text-rose-700 bg-rose-50 hover:bg-rose-100',
+                      };
+                      const activeColors = {
+                        alta: 'bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700',
+                        media: 'bg-amber-500 text-white border-amber-500 hover:bg-amber-600',
+                        baja: 'bg-rose-600 text-white border-rose-600 hover:bg-rose-700',
+                      };
                       const isActive = editingIngredient.confidence === level;
+
                       return (
                         <button
                           key={level}
                           type="button"
                           onClick={() => setEditingIngredient(prev => prev ? { ...prev, confidence: level } : null)}
-                          className={`rounded-2xl py-2.5 text-[13px] font-semibold capitalize transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
-                            isActive ? 'bg-black text-white' : 'bg-[#F5F5F7] text-black/50'
+                          className={`border rounded-xl py-2 text-xs font-semibold capitalize transition-all cursor-pointer text-center ${
+                            isActive ? activeColors[level] : levelColors[level]
                           }`}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: isActive ? '#fff' : CONFIDENCE_DOT[level] }} />
                           {level}
                         </button>
                       );
@@ -420,12 +469,21 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-black text-white font-semibold py-4 rounded-full text-[15px] cursor-pointer active:scale-[0.98] transition-transform"
-                >
-                  Guardar
-                </button>
+                <div className="flex gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingIngredient(null)}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all cursor-pointer shadow-sm shadow-emerald-600/10"
+                  >
+                    Guardar
+                  </button>
+                </div>
               </form>
             </motion.div>
           </motion.div>

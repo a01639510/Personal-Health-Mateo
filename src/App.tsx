@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import BottomTabBar from './components/BottomTabBar';
 import ScanPantry from './components/ScanPantry';
 import RecipeList from './components/RecipeList';
 import RecipeDetails from './components/RecipeDetails';
@@ -9,19 +8,13 @@ import ScanHistory from './components/ScanHistory';
 import { SpoonacularRecipeSummary } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
-const TAB_TITLES: Record<'scan' | 'favorites' | 'history', string> = {
-  scan: 'Escanear',
-  favorites: 'Guardadas',
-  history: 'Historial',
-};
-
 export default function App() {
   const [activeTab, setActiveTab] = useState<'scan' | 'favorites' | 'history'>('scan');
   const [viewState, setViewState] = useState<'scan' | 'recipe-list' | 'recipe-details'>('scan');
-
+  
   // Scanned / Loaded ingredients state
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
-
+  
   // Spoonacular recipes search results state
   const [recipes, setRecipes] = useState<SpoonacularRecipeSummary[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(false);
@@ -132,99 +125,100 @@ export default function App() {
     setRefreshFavsTrigger(prev => prev + 1);
   };
 
-  const handleTabChange = (tab: 'scan' | 'favorites' | 'history') => {
-    setActiveTab(tab);
-    setViewState('scan'); // Reset inner view to root of the tab
-  };
-
-  const showGlobalHeader = viewState !== 'recipe-details';
-  const headerTitle = viewState === 'recipe-list' ? 'Recetas' : TAB_TITLES[activeTab];
-
   return (
-    <div className="min-h-screen bg-white text-[#0a0a0a]">
-      <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
-        {showGlobalHeader && (
-          <Header title={headerTitle} onTitleTap={() => handleTabChange('scan')} />
-        )}
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+      {/* PWA App Header */}
+      <Header
+        activeTab={activeTab}
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setViewState('scan'); // Reset inner view to root of the tab
+        }}
+      />
 
-        {/* Main Content Area */}
-        <main className="flex-grow w-full px-4 pb-tabbar">
-          <AnimatePresence mode="wait">
-            {activeTab === 'scan' && (
-              <motion.div
-                key="scan-tab"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                {viewState === 'scan' && (
-                  <ScanPantry onSearchRecipes={handleSearchRecipes} />
-                )}
+      {/* Main Content Area */}
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <AnimatePresence mode="wait">
+          {activeTab === 'scan' && (
+            <motion.div
+              key="scan-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {viewState === 'scan' && (
+                <ScanPantry onSearchRecipes={handleSearchRecipes} />
+              )}
 
-                {viewState === 'recipe-list' && (
-                  <RecipeList
-                    recipes={recipes}
-                    onSelectRecipe={(id) => handleSelectRecipe(id, 'recipes')}
-                    onBackToScan={handleBack}
-                    loading={loadingRecipes}
-                    error={recipesError}
-                  />
-                )}
+              {viewState === 'recipe-list' && (
+                <RecipeList
+                  recipes={recipes}
+                  onSelectRecipe={(id) => handleSelectRecipe(id, 'recipes')}
+                  onBackToScan={handleBack}
+                  loading={loadingRecipes}
+                  error={recipesError}
+                />
+              )}
 
-                {viewState === 'recipe-details' && selectedRecipeId !== null && (
+              {viewState === 'recipe-details' && selectedRecipeId !== null && (
+                <RecipeDetails
+                  recipeId={selectedRecipeId}
+                  onBack={handleBack}
+                  onSaveSuccess={handleSaveSuccess}
+                  savedSpoonacularIds={savedSpoonacularIds}
+                />
+              )}
+            </motion.div>
+          )}
+
+          {activeTab === 'favorites' && (
+            <motion.div
+              key="favorites-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              {viewState === 'scan' ? (
+                <FavoritesList
+                  onSelectSavedRecipe={(id) => handleSelectRecipe(id, 'favorites')}
+                  onRefreshTrigger={refreshFavsTrigger}
+                />
+              ) : (
+                viewState === 'recipe-details' && selectedRecipeId !== null && (
                   <RecipeDetails
                     recipeId={selectedRecipeId}
                     onBack={handleBack}
                     onSaveSuccess={handleSaveSuccess}
                     savedSpoonacularIds={savedSpoonacularIds}
                   />
-                )}
-              </motion.div>
-            )}
+                )
+              )}
+            </motion.div>
+          )}
 
-            {activeTab === 'favorites' && (
-              <motion.div
-                key="favorites-tab"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                {viewState === 'scan' ? (
-                  <FavoritesList
-                    onSelectSavedRecipe={(id) => handleSelectRecipe(id, 'favorites')}
-                    onRefreshTrigger={refreshFavsTrigger}
-                  />
-                ) : (
-                  viewState === 'recipe-details' && selectedRecipeId !== null && (
-                    <RecipeDetails
-                      recipeId={selectedRecipeId}
-                      onBack={handleBack}
-                      onSaveSuccess={handleSaveSuccess}
-                      savedSpoonacularIds={savedSpoonacularIds}
-                    />
-                  )
-                )}
-              </motion.div>
-            )}
+          {activeTab === 'history' && (
+            <motion.div
+              key="history-tab"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+            >
+              <ScanHistory onLoadIngredients={handleLoadIngredientsFromHistory} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
 
-            {activeTab === 'history' && (
-              <motion.div
-                key="history-tab"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <ScanHistory onLoadIngredients={handleLoadIngredientsFromHistory} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
-
-        <BottomTabBar activeTab={activeTab} setActiveTab={handleTabChange} />
-      </div>
+      {/* Humble Footer */}
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500 font-mono">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p>© 2026 ChefScan. Todos los derechos reservados.</p>
+          <p className="mt-1 text-[10px] text-slate-400">Fase 1 MVP • Conectado a Supabase & Claude 3.5 Sonnet</p>
+        </div>
+      </footer>
     </div>
   );
 }
