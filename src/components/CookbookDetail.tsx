@@ -3,6 +3,9 @@ import { ChevronLeft, AlertCircle, Youtube } from 'lucide-react';
 import Skeleton from './Skeleton';
 import NutritionRings from './NutritionRings';
 import { CookbookRecipeDetail } from '../types';
+import { usePreferences } from '../lib/preferences';
+import { translateCategory, translateArea } from '../lib/categoryTranslations';
+import { formatMeasure } from '../lib/unitConversion';
 
 interface CookbookDetailProps {
   recipeId: string;
@@ -10,6 +13,7 @@ interface CookbookDetailProps {
 }
 
 export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps) {
+  const prefs = usePreferences();
   const [recipe, setRecipe] = useState<CookbookRecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
@@ -86,7 +90,11 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
     );
   }
 
-  const paragraphs = (recipe.instructions || '')
+  const displayTitle = prefs.language === 'es' && recipe.title_es ? recipe.title_es : recipe.title;
+  const displayInstructions = prefs.language === 'es' && recipe.instructions_es ? recipe.instructions_es : recipe.instructions;
+  const displayIngredients = prefs.language === 'es' && recipe.ingredients_es?.length ? recipe.ingredients_es : recipe.ingredients;
+
+  const paragraphs = (displayInstructions || '')
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean);
@@ -113,14 +121,14 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
 
         <div className="absolute bottom-4 left-4 right-4">
           <h1 className="text-[22px] font-bold text-white tracking-tight leading-tight drop-shadow-sm">
-            {recipe.title}
+            {displayTitle}
           </h1>
           <div className="flex items-center gap-2 mt-2 text-[12px] font-medium text-white/90">
             {recipe.category && (
-              <span className="bg-white/20 backdrop-blur px-2.5 py-1 rounded-full">{recipe.category}</span>
+              <span className="bg-white/20 backdrop-blur px-2.5 py-1 rounded-full">{translateCategory(recipe.category, prefs.language)}</span>
             )}
             {recipe.area && (
-              <span className="bg-white/20 backdrop-blur px-2.5 py-1 rounded-full">{recipe.area}</span>
+              <span className="bg-white/20 backdrop-blur px-2.5 py-1 rounded-full">{translateArea(recipe.area, prefs.language)}</span>
             )}
           </div>
         </div>
@@ -148,19 +156,19 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
 
       <div className="mt-6">
         <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-2 px-0.5">
-          Ingredientes ({recipe.ingredients.length})
+          Ingredientes ({displayIngredients.length})
         </h3>
         <div className="bg-[var(--bg-surface)] rounded-[24px] px-4">
-          {recipe.ingredients.map((ing, i) => (
+          {displayIngredients.map((ing, i) => (
             <div
               key={`${ing.name}-${i}`}
               className={`flex justify-between items-center py-3.5 text-[13.5px] capitalize ${
-                i !== recipe.ingredients.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
+                i !== displayIngredients.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
               }`}
             >
               <span className="text-[var(--text-primary)] font-medium leading-tight pr-3">{ing.name}</span>
               <span className="text-[var(--text-primary)]/40 font-medium flex-shrink-0 text-right">
-                {ing.measure}
+                {formatMeasure(ing.measure, prefs)}
               </span>
             </div>
           ))}

@@ -45,6 +45,7 @@ export interface CookbookRecipe {
   id: string;
   external_id: string;
   title: string;
+  title_es?: string | null;
   image_url: string;
   category: string;
   area: string;
@@ -53,7 +54,9 @@ export interface CookbookRecipe {
 
 export interface CookbookRecipeDetail extends CookbookRecipe {
   ingredients: { name: string; measure: string }[];
+  ingredients_es?: { name: string; measure: string }[] | null;
   instructions: string;
+  instructions_es?: string | null;
   video_url: string;
   calories?: number | null;
   protein_g?: number | null;

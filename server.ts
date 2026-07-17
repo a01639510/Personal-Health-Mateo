@@ -734,7 +734,7 @@ app.get('/api/cookbook', async (req, res) => {
 
     let query = supabase
       .from('recipes')
-      .select('id, external_id, title, image_url, category, area, tags', { count: 'exact' })
+      .select('id, external_id, title, title_es, image_url, category, area, tags', { count: 'exact' })
       .order('title', { ascending: true })
       .range(from, to);
 
@@ -804,6 +804,90 @@ app.get('/api/cookbook/:id', async (req, res) => {
     res.status(500).json({
       error: 'Error al obtener la receta',
       message: error.message || 'No se pudo generar el detalle de la receta.'
+    });
+  }
+});
+
+// 11. ENDPOINT (admin, uso único): traduce un lote de recetas del Recetario al español vía Gemini.
+// Se llama repetidamente con un límite pequeño hasta que "remaining" sea 0 (evita timeouts de función serverless).
+app.post('/api/admin/translate-recipes', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'GEMINI_API_KEY'], res)) {
+      return;
+    }
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const limitNum = Math.min(30, Math.max(1, parseInt((req.body?.limit ?? req.query?.limit ?? '10') as string, 10) || 10));
+
+    const { data: pending, error: fetchError } = await supabase
+      .from('recipes')
+      .select('id, title, instructions, ingredients')
+      .is('title_es', null)
+      .limit(limitNum);
+    if (fetchError) throw fetchError;
+
+    const { count: remainingBefore } = await supabase
+      .from('recipes')
+      .select('id', { count: 'exact', head: true })
+      .is('title_es', null);
+
+    let translated = 0;
+    const errors: string[] = [];
+
+    for (const recipe of pending || []) {
+      try {
+        const ingredientNames = (recipe.ingredients || []).map((i: any) => i.name);
+        const promptText = `Traduce al español lo siguiente de una receta de cocina. Título: "${recipe.title}". Ingredientes: ${JSON.stringify(ingredientNames)}. Instrucciones: "${(recipe.instructions || '').slice(0, 4000)}". Devuelve una traducción natural y culinaria, no literal palabra por palabra.`;
+
+        const response = await generateWithRetry({
+          model: "gemini-3.5-flash",
+          contents: promptText,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                title_es: { type: Type.STRING },
+                instructions_es: { type: Type.STRING },
+                ingredient_names_es: { type: Type.ARRAY, items: { type: Type.STRING } },
+              },
+              required: ['title_es', 'instructions_es', 'ingredient_names_es'],
+            },
+          },
+        });
+
+        const parsed = JSON.parse((response.text || '{}').trim());
+        const translatedNames: string[] = parsed.ingredient_names_es || [];
+        const ingredientsEs = (recipe.ingredients || []).map((ing: any, idx: number) => ({
+          name: translatedNames[idx] || ing.name,
+          measure: ing.measure,
+        }));
+
+        const { error: patchError } = await supabase
+          .from('recipes')
+          .update({
+            title_es: parsed.title_es || recipe.title,
+            instructions_es: parsed.instructions_es || recipe.instructions,
+            ingredients_es: ingredientsEs,
+          })
+          .eq('id', recipe.id);
+        if (patchError) throw patchError;
+
+        translated++;
+      } catch (err: any) {
+        errors.push(`${recipe.id}: ${err.message || err}`);
+      }
+    }
+
+    const remaining = Math.max(0, (remainingBefore || 0) - translated);
+    res.json({ translated, remaining, errors });
+  } catch (error: any) {
+    console.error('Error en /api/admin/translate-recipes:', error);
+    res.status(500).json({
+      error: 'Error al traducir recetas',
+      message: friendlyGeminiErrorMessage(error, error.message || 'Error inesperado durante la traducción.')
     });
   }
 });

@@ -3,6 +3,8 @@ import { Search, X, SlidersHorizontal, AlertCircle, BookOpen } from 'lucide-reac
 import { motion, AnimatePresence } from 'motion/react';
 import { CookbookRecipe } from '../types';
 import Skeleton from './Skeleton';
+import { usePreferences } from '../lib/preferences';
+import { translateCategory, translateArea } from '../lib/categoryTranslations';
 
 interface CookbookProps {
   onSelectRecipe: (id: string) => void;
@@ -11,6 +13,7 @@ interface CookbookProps {
 const LIMIT = 24;
 
 export default function Cookbook({ onSelectRecipe }: CookbookProps) {
+  const prefs = usePreferences();
   const [recipes, setRecipes] = useState<CookbookRecipe[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -91,7 +94,7 @@ export default function Cookbook({ onSelectRecipe }: CookbookProps) {
   }, [fetchRecipes]);
 
   const hasMore = recipes.length < total;
-  const activeAreaLabel = area || 'Cocina';
+  const activeAreaLabel = area ? translateArea(area, prefs.language) : 'Cocina';
 
   return (
     <div className="pt-2 pb-2">
@@ -147,7 +150,7 @@ export default function Cookbook({ onSelectRecipe }: CookbookProps) {
                 category === cat ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--bg-surface)] text-[var(--text-primary)]/60'
               }`}
             >
-              {cat}
+              {translateCategory(cat, prefs.language)}
             </button>
           ))}
         </div>
@@ -221,15 +224,15 @@ export default function Cookbook({ onSelectRecipe }: CookbookProps) {
                   />
                   {recipe.category && (
                     <span className="absolute top-2 left-2 bg-white/90 backdrop-blur text-black text-[9.5px] font-semibold px-2 py-0.5 rounded-full">
-                      {recipe.category}
+                      {translateCategory(recipe.category, prefs.language)}
                     </span>
                   )}
                 </div>
                 <h3 className="mt-2 text-[12.5px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2">
-                  {recipe.title}
+                  {prefs.language === 'es' && recipe.title_es ? recipe.title_es : recipe.title}
                 </h3>
                 {recipe.area && (
-                  <p className="text-[10.5px] text-[var(--text-primary)]/40 mt-0.5">{recipe.area}</p>
+                  <p className="text-[10.5px] text-[var(--text-primary)]/40 mt-0.5">{translateArea(recipe.area, prefs.language)}</p>
                 )}
               </motion.div>
             ))}
@@ -302,7 +305,7 @@ export default function Cookbook({ onSelectRecipe }: CookbookProps) {
                       area === a ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--bg-elevated)] text-[var(--text-primary)]/60'
                     }`}
                   >
-                    {a}
+                    {translateArea(a, prefs.language)}
                   </button>
                 ))}
               </div>
