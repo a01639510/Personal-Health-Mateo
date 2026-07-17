@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, AlertCircle, Youtube, Share2, Check } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Youtube, Share2, Check, UtensilsCrossed } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Skeleton from './Skeleton';
 import NutritionRings from './NutritionRings';
@@ -19,6 +19,8 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [logged, setLogged] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -100,6 +102,36 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean);
+
+  const handleLogEaten = async () => {
+    if (!recipe || logging) return;
+    setLogging(true);
+    try {
+      const res = await fetch('/api/food-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'cookbook',
+          source_id: recipeId,
+          name: displayTitle,
+          calories: recipe.calories ?? 0,
+          protein_g: recipe.protein_g ?? 0,
+          carbs_g: recipe.carbs_g ?? 0,
+          fat_g: recipe.fat_g ?? 0,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Error al registrar la comida');
+      }
+      setLogged(true);
+      setTimeout(() => setLogged(false), 2500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLogging(false);
+    }
+  };
 
   const handleShare = async () => {
     const url = `${window.location.origin}/?receta=${recipeId}`;
@@ -192,6 +224,24 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
         fat={recipe.fat_g ?? 0}
         estimated={recipe.nutrition_is_estimated}
       />
+
+      <button
+        onClick={handleLogEaten}
+        disabled={logging}
+        className="mt-4 w-full flex items-center justify-center gap-2 bg-[var(--bg-surface)] disabled:opacity-50 text-[var(--text-primary)] font-semibold py-3.5 rounded-full text-[14px] cursor-pointer active:scale-[0.98] transition-transform"
+      >
+        {logged ? (
+          <>
+            <Check className="w-4 h-4" strokeWidth={2.5} />
+            <span>Registrado</span>
+          </>
+        ) : (
+          <>
+            <UtensilsCrossed className="w-4 h-4" strokeWidth={2} />
+            <span>{logging ? 'Registrando...' : 'Registrar como comido hoy'}</span>
+          </>
+        )}
+      </button>
 
       <div className="mt-6">
         <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-2 px-0.5">

@@ -93,3 +93,32 @@ export interface RecipeDetail {
     }[];
   };
 }
+
+export interface FoodLogEntry {
+  id: string;
+  source: 'cookbook' | 'ai_recipe' | 'manual';
+  source_id: string | null;
+  name: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  logged_at: string;
+}
+
+export interface UsdaFoodSearchResult {
+  fdc_id: number;
+  description: string;
+  kcal_per_100g: number;
+  protein_g_per_100g: number;
+  carbs_g_per_100g: number;
+  fat_g_per_100g: number;
+}
+
+export interface DailyNutritionTotals {
+  date: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+}

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Camera, Heart, History, BookOpen, type LucideIcon } from 'lucide-react';
+import { Camera, Heart, History, BookOpen, LineChart, type LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
-export type AppTab = 'scan' | 'favorites' | 'history' | 'cookbook';
+export type AppTab = 'scan' | 'favorites' | 'history' | 'cookbook' | 'nutrition';
 
 interface BottomTabBarProps {
   activeTab: AppTab;
@@ -15,7 +15,10 @@ interface TabDef {
   icon: LucideIcon;
 }
 
-const LEFT_TABS: TabDef[] = [{ id: 'history', label: 'Historial', icon: History }];
+const LEFT_TABS: TabDef[] = [
+  { id: 'history', label: 'Historial', icon: History },
+  { id: 'nutrition', label: 'Nutrición', icon: LineChart },
+];
 const RIGHT_TABS: TabDef[] = [
   { id: 'cookbook', label: 'Recetario', icon: BookOpen },
   { id: 'favorites', label: 'Guardadas', icon: Heart },

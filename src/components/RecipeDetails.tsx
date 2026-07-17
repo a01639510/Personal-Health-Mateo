@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Heart, Loader2, Clock, Check, Utensils, AlertCircle, Copy, Database, X } from 'lucide-react';
+import { ChevronLeft, Heart, Loader2, Clock, Check, Utensils, AlertCircle, Copy, Database, X, UtensilsCrossed } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RecipeDetail } from '../types';
 import NutritionRings from './NutritionRings';
@@ -21,6 +21,8 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
   const [saveError, setSaveError] = useState<{ message: string; details?: string; isSchemaMissing?: boolean; sql?: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [logging, setLogging] = useState(false);
+  const [logged, setLogged] = useState(false);
 
   useEffect(() => {
     fetchRecipeDetail();
@@ -109,6 +111,36 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogEaten = async () => {
+    if (!recipe || logging) return;
+    setLogging(true);
+    try {
+      const res = await fetch('/api/food-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'ai_recipe',
+          source_id: String(recipe.id),
+          name: recipe.title,
+          calories,
+          protein_g: protein,
+          carbs_g: carbs,
+          fat_g: fat,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.message || 'Error al registrar la comida');
+      }
+      setLogged(true);
+      setTimeout(() => setLogged(false), 2500);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLogging(false);
     }
   };
 
@@ -239,6 +271,24 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
       {/* Macro Rings Panel */}
       <NutritionRings calories={calories} protein={protein} carbs={carbs} fat={fat} />
+
+      <button
+        onClick={handleLogEaten}
+        disabled={logging}
+        className="mt-4 w-full flex items-center justify-center gap-2 bg-[var(--bg-surface)] disabled:opacity-50 text-[var(--text-primary)] font-semibold py-3.5 rounded-full text-[14px] cursor-pointer active:scale-[0.98] transition-transform"
+      >
+        {logged ? (
+          <>
+            <Check className="w-4 h-4" strokeWidth={2.5} />
+            <span>Registrado</span>
+          </>
+        ) : (
+          <>
+            <UtensilsCrossed className="w-4 h-4" strokeWidth={2} />
+            <span>{logging ? 'Registrando...' : 'Registrar como comido hoy'}</span>
+          </>
+        )}
+      </button>
 
       {/* Ingredients Panel */}
       <div className="mt-6">

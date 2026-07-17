@@ -794,4 +794,162 @@ app.post('/api/admin/translate-recipes', async (req, res) => {
   }
 });
 
+// 12. ENDPOINT: buscar alimentos en la referencia USDA para registro manual.
+app.get('/api/food-search', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const q = (req.query.q as string || '').trim();
+    if (!q) return res.json({ foods: [] });
+
+    const { data, error } = await supabase
+      .from('usda_foods')
+      .select('fdc_id, description, kcal_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g')
+      .ilike('description', `%${q}%`)
+      .limit(20);
+    if (error) throw error;
+
+    const foods = (data || []).sort((a: any, b: any) => a.description.length - b.description.length);
+    res.json({ foods });
+  } catch (error: any) {
+    console.error('Error en GET /api/food-search:', error);
+    res.status(500).json({ error: 'Error al buscar alimentos', message: error.message || 'No se pudo consultar la base de alimentos.' });
+  }
+});
+
+// 13. ENDPOINTS: registro de comidas (food log)
+app.post('/api/food-log', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { source, source_id, name, calories, protein_g, carbs_g, fat_g } = req.body;
+    if (!source || !name) {
+      return res.status(400).json({ error: 'source y name son campos requeridos.' });
+    }
+
+    const { data, error } = await supabase
+      .from('food_log')
+      .insert({
+        source,
+        source_id: source_id || null,
+        name,
+        calories: calories || 0,
+        protein_g: protein_g || 0,
+        carbs_g: carbs_g || 0,
+        fat_g: fat_g || 0,
+      })
+      .select()
+      .single();
+    if (error) throw error;
+
+    res.json({ success: true, entry: data });
+  } catch (error: any) {
+    console.error('Error en POST /api/food-log:', error);
+    const schemaMissing = isSchemaError(error);
+    res.status(500).json({
+      error: 'Error al registrar la comida',
+      message: schemaMissing ? 'La tabla "food_log" no existe en tu base de datos de Supabase.' : (error.message || 'No se pudo registrar la comida.'),
+      isSchemaMissing: schemaMissing,
+    });
+  }
+});
+
+app.get('/api/food-log', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const dateParam = (req.query.date as string) || new Date().toISOString().slice(0, 10);
+    const startOfDay = new Date(`${dateParam}T00:00:00.000Z`);
+    const endOfDay = new Date(`${dateParam}T23:59:59.999Z`);
+
+    const { data, error } = await supabase
+      .from('food_log')
+      .select('*')
+      .gte('logged_at', startOfDay.toISOString())
+      .lte('logged_at', endOfDay.toISOString())
+      .order('logged_at', { ascending: false });
+    if (error) throw error;
+
+    res.json({ entries: data || [] });
+  } catch (error: any) {
+    console.error('Error en GET /api/food-log:', error);
+    const schemaMissing = isSchemaError(error);
+    res.status(500).json({
+      error: 'Error al consultar el registro de comidas',
+      message: schemaMissing ? 'La tabla "food_log" no existe en tu base de datos de Supabase.' : (error.message || 'No se pudo leer el registro de comidas.'),
+      isSchemaMissing: schemaMissing,
+    });
+  }
+});
+
+app.delete('/api/food-log/:id', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { error } = await supabase.from('food_log').delete().eq('id', req.params.id);
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error(`Error en DELETE /api/food-log/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Error al eliminar el registro', message: error.message || 'No se pudo eliminar.' });
+  }
+});
+
+app.get('/api/food-log/trends', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const days = Math.min(30, Math.max(1, parseInt((req.query.days as string) || '7', 10) || 7));
+    const since = new Date();
+    since.setUTCHours(0, 0, 0, 0);
+    since.setUTCDate(since.getUTCDate() - (days - 1));
+
+    const { data, error } = await supabase
+      .from('food_log')
+      .select('calories, protein_g, carbs_g, fat_g, logged_at')
+      .gte('logged_at', since.toISOString())
+      .order('logged_at', { ascending: true });
+    if (error) throw error;
+
+    const byDay = new Map<string, { calories: number; protein_g: number; carbs_g: number; fat_g: number }>();
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since);
+      d.setUTCDate(since.getUTCDate() + i);
+      byDay.set(d.toISOString().slice(0, 10), { calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 });
+    }
+    for (const entry of data || []) {
+      const day = (entry.logged_at as string).slice(0, 10);
+      const bucket = byDay.get(day);
+      if (bucket) {
+        bucket.calories += Number(entry.calories) || 0;
+        bucket.protein_g += Number(entry.protein_g) || 0;
+        bucket.carbs_g += Number(entry.carbs_g) || 0;
+        bucket.fat_g += Number(entry.fat_g) || 0;
+      }
+    }
+
+    const trends = Array.from(byDay.entries()).map(([date, totals]) => ({ date, ...totals }));
+    res.json({ trends });
+  } catch (error: any) {
+    console.error('Error en GET /api/food-log/trends:', error);
+    res.status(500).json({ error: 'Error al calcular tendencias', message: error.message || 'No se pudieron calcular las tendencias.' });
+  }
+});
+
 export default app;

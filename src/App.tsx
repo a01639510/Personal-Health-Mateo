@@ -12,6 +12,7 @@ import PantryInventory from './components/PantryInventory';
 import BarcodeScanner from './components/BarcodeScanner';
 import PreferencesSheet from './components/PreferencesSheet';
 import FitnessProfileSheet from './components/FitnessProfileSheet';
+import NutritionTracking from './components/NutritionTracking';
 import { SpoonacularRecipeSummary } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -20,6 +21,7 @@ const TAB_TITLES: Record<AppTab, string> = {
   favorites: 'Guardadas',
   history: 'Historial',
   cookbook: 'Recetario',
+  nutrition: 'Nutrición',
 };
 
 export default function App() {
@@ -287,6 +289,18 @@ export default function App() {
                 {viewState === 'cookbook-details' && selectedCookbookId !== null && (
                   <CookbookDetail recipeId={selectedCookbookId} onBack={handleBack} />
                 )}
+              </motion.div>
+            )}
+
+            {activeTab === 'nutrition' && (
+              <motion.div
+                key="nutrition-tab"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                <NutritionTracking onOpenFitnessProfile={() => setShowFitnessProfile(true)} />
               </motion.div>
             )}
           </AnimatePresence>
