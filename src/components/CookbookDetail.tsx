@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, AlertCircle, Youtube } from 'lucide-react';
 import Skeleton from './Skeleton';
+import NutritionRings from './NutritionRings';
 import { CookbookRecipeDetail } from '../types';
 
 interface CookbookDetailProps {
@@ -136,6 +137,14 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
           <span>Ver video de preparación</span>
         </a>
       )}
+
+      <NutritionRings
+        calories={recipe.calories ?? 0}
+        protein={recipe.protein_g ?? 0}
+        carbs={recipe.carbs_g ?? 0}
+        fat={recipe.fat_g ?? 0}
+        estimated={recipe.nutrition_is_estimated}
+      />
 
       <div className="mt-6">
         <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-2 px-0.5">

@@ -93,6 +93,8 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
       <div className="space-y-4">
         {sortedRecipes.map((recipe, idx) => {
           const hasAll = recipe.missedIngredientCount === 0;
+          const missedPrimary = (recipe.missedIngredients || []).filter(i => !i.isSecondary);
+          const missedSecondary = (recipe.missedIngredients || []).filter(i => i.isSecondary);
 
           return (
             <motion.div
@@ -135,6 +137,18 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
                 {recipe.usedIngredients && recipe.usedIngredients.length > 0 && (
                   <p className="text-[12px] text-[var(--text-primary)]/40 capitalize line-clamp-1 leading-relaxed">
                     {recipe.usedIngredients.map(i => i.name).join(' · ')}
+                  </p>
+                )}
+
+                {missedPrimary.length > 0 && (
+                  <p className="text-[12px] text-[#ff3b30] capitalize line-clamp-1 leading-relaxed font-medium">
+                    Falta: {missedPrimary.map(i => i.name).join(', ')}
+                  </p>
+                )}
+
+                {missedSecondary.length > 0 && (
+                  <p className="text-[11.5px] text-[var(--text-primary)]/40 capitalize line-clamp-1 leading-relaxed">
+                    + {missedSecondary.map(i => i.name).join(', ')} (opcional)
                   </p>
                 )}
 

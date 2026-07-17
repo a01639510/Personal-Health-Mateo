@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Heart, Loader2, Clock, Check, Utensils, AlertCircle, Copy, Database, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { RecipeDetail } from '../types';
-import MacroRing from './MacroRing';
+import NutritionRings from './NutritionRings';
 import Skeleton from './Skeleton';
 
 interface RecipeDetailsProps {
@@ -169,12 +169,6 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
   const steps = recipe.analyzedInstructions?.[0]?.steps || [];
 
-  const macros = [
-    { label: 'Proteína', value: protein, max: 50, color: 'var(--ring-protein)' },
-    { label: 'Carbos', value: carbs, max: 100, color: 'var(--ring-carbs)' },
-    { label: 'Grasas', value: fat, max: 40, color: 'var(--ring-fat)' },
-  ];
-
   return (
     <div className="pt-2 pb-2">
       {/* Image + floating nav */}
@@ -244,29 +238,7 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
       </AnimatePresence>
 
       {/* Macro Rings Panel */}
-      {calories > 0 && (
-        <div className="mt-5 bg-[var(--bg-surface)] rounded-[28px] p-6">
-          <div className="flex items-center justify-center mb-6">
-            <MacroRing value={calories} max={800} size={126} strokeWidth={10} color="var(--ring-calories)" delay={0.1}>
-              <div className="text-center">
-                <div className="text-[26px] font-extrabold text-[var(--text-primary)] leading-none tracking-tight">{calories}</div>
-                <div className="text-[11px] text-[var(--text-primary)]/40 font-semibold mt-1">kcal</div>
-              </div>
-            </MacroRing>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2">
-            {macros.map((m, idx) => (
-              <div key={m.label} className="flex flex-col items-center gap-2">
-                <MacroRing value={m.value} max={m.max} size={56} strokeWidth={5} color={m.color} delay={0.45 + idx * 0.12}>
-                  <span className="text-[12px] font-bold text-[var(--text-primary)]">{m.value}g</span>
-                </MacroRing>
-                <span className="text-[11px] text-[var(--text-primary)]/40 font-medium">{m.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <NutritionRings calories={calories} protein={protein} carbs={carbs} fat={fat} />
 
       {/* Ingredients Panel */}
       <div className="mt-6">

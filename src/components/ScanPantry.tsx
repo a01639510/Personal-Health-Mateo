@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Plus, X, Loader2, ArrowRight, RotateCcw } from 'lucide-react';
+import { Camera, Plus, X, Loader2, ArrowRight, RotateCcw, ScanBarcode } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DetectedItem } from '../types';
 
 interface ScanPantryProps {
   onSearchRecipes: (ingredients: string[]) => void;
+  onOpenInventory: () => void;
 }
 
 const CATEGORIES = ['Verdura', 'Fruta', 'Lácteo', 'Carne', 'Huevo', 'Salsa', 'Condimento', 'Legumbre', 'Panadería', 'Pescado', 'Otros'];
@@ -15,7 +16,7 @@ const CONFIDENCE_DOT: Record<string, string> = {
   baja: '#ff3b30',
 };
 
-export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
+export default function ScanPantry({ onSearchRecipes, onOpenInventory }: ScanPantryProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [loadingStep, setLoadingStep] = useState<string>('');
@@ -180,6 +181,14 @@ export default function ScanPantry({ onSearchRecipes }: ScanPantryProps) {
             >
               <Camera className="w-[18px] h-[18px]" strokeWidth={2} />
               <span>Escanear refrigerador</span>
+            </button>
+
+            <button
+              onClick={onOpenInventory}
+              className="mt-2.5 w-full flex items-center justify-center gap-2 bg-[var(--bg-surface)] text-[var(--text-primary)] font-semibold text-[15px] py-4 rounded-full active:scale-[0.98] transition-transform cursor-pointer"
+            >
+              <ScanBarcode className="w-[18px] h-[18px]" strokeWidth={2} />
+              <span>Escanear código de barras</span>
             </button>
           </motion.div>
         ) : isScanning ? (

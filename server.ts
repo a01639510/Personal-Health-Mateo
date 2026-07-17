@@ -159,6 +159,12 @@ function getFoodImage(title: string): string {
   return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80';
 }
 
+const SECONDARY_INGREDIENT_KEYWORDS = /\b(sal|pimienta|especias?|condimento|aceite|mantequilla|margarina|az[uú]car|vinagre|salsa de soya|salsa soya|caldo en cubo|consom[eé] en polvo|ajo en polvo|cebolla en polvo|ol(i|í)va oil|salt|pepper|spice|seasoning|oil|butter|sugar|vinegar|soy sauce|bouillon|garlic powder|onion powder)\b/i;
+
+function isSecondaryIngredientName(name: string): boolean {
+  return SECONDARY_INGREDIENT_KEYWORDS.test((name || '').toLowerCase());
+}
+
 // 1. ENDPOINT: Identify Ingredients from Fridge Photo
 app.post('/api/identify-ingredients', async (req, res) => {
   try {
@@ -307,7 +313,7 @@ app.post('/api/find-recipes', async (req, res) => {
       return res.status(400).json({ error: 'Falta la lista de ingredientes' });
     }
 
-    const systemInstruction = "Eres un chef profesional creativo de habla hispana. Sugiere de 6 a 10 recetas deliciosas y fáciles que se puedan preparar priorizando la lista de ingredientes que el usuario proporciona. Indica claramente cuántos ingredientes de la lista del usuario se usan (usedIngredients) y cuáles ingredientes adicionales no listados son necesarios (missedIngredients). Responde en formato JSON según el esquema especificado.";
+    const systemInstruction = "Eres un chef profesional creativo de habla hispana. Sugiere de 6 a 10 recetas deliciosas y fáciles que se puedan preparar priorizando la lista de ingredientes que el usuario proporciona. Indica claramente cuántos ingredientes de la lista del usuario se usan (usedIngredients) y cuáles ingredientes adicionales no listados son necesarios (missedIngredients). Para cada ingrediente de usedIngredients y missedIngredients, marca isSecondary: true si es un ingrediente básico de despensa que casi cualquier cocina tiene y que NO debería impedir preparar la receta (especias, hierbas secas, sal, pimienta, aceite, mantequilla, vinagre, azúcar como condimento, salsas de condimento); usa isSecondary: false para proteínas, vegetales, lácteos principales, granos, y cualquier ingrediente central de la receta. Responde en formato JSON según el esquema especificado.";
 
     const promptText = `Sugiéreme recetas deliciosas que pueda preparar usando principalmente estos ingredientes: ${ingredients.join(', ')}.`;
 
@@ -336,9 +342,10 @@ app.post('/api/find-recipes', async (req, res) => {
                       properties: {
                         name: { type: Type.STRING, description: "Nombre del ingrediente usado" },
                         amount: { type: Type.NUMBER },
-                        unit: { type: Type.STRING }
+                        unit: { type: Type.STRING },
+                        isSecondary: { type: Type.BOOLEAN, description: "true si es un ingrediente secundario/básico de despensa (especia, aceite, sal, etc.)" }
                       },
-                      required: ["name"]
+                      required: ["name", "isSecondary"]
                     }
                   },
                   missedIngredients: {
@@ -348,9 +355,10 @@ app.post('/api/find-recipes', async (req, res) => {
                       properties: {
                         name: { type: Type.STRING, description: "Nombre del ingrediente faltante" },
                         amount: { type: Type.NUMBER },
-                        unit: { type: Type.STRING }
+                        unit: { type: Type.STRING },
+                        isSecondary: { type: Type.BOOLEAN, description: "true si es un ingrediente secundario/básico de despensa (especia, aceite, sal, etc.)" }
                       },
-                      required: ["name"]
+                      required: ["name", "isSecondary"]
                     }
                   }
                 },
@@ -367,12 +375,28 @@ app.post('/api/find-recipes', async (req, res) => {
     const parsedResult = JSON.parse(responseText.trim());
 
     const recipes = (parsedResult.recipes || []).map((recipe: any) => {
+      const usedIngredients = (recipe.usedIngredients || []).map((i: any) => ({
+        ...i,
+        isSecondary: i.isSecondary === true || isSecondaryIngredientName(i.name)
+      }));
+      const missedIngredients = (recipe.missedIngredients || []).map((i: any) => ({
+        ...i,
+        isSecondary: i.isSecondary === true || isSecondaryIngredientName(i.name)
+      }));
+      const missedIngredientCount = missedIngredients.filter((i: any) => !i.isSecondary).length;
+      const missedIngredientCountSecondary = missedIngredients.length - missedIngredientCount;
+
       const imageUrl = getFoodImage(recipe.title);
       const enrichedRecipe = {
         ...recipe,
+        usedIngredients,
+        missedIngredients,
+        usedIngredientCount: usedIngredients.length,
+        missedIngredientCount,
+        missedIngredientCountSecondary,
         image: imageUrl
       };
-      
+
       // Store in server cache
       recipeCache.set(recipe.id, enrichedRecipe);
       return enrichedRecipe;

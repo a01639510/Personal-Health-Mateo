@@ -8,6 +8,8 @@ import FavoritesList from './components/FavoritesList';
 import ScanHistory from './components/ScanHistory';
 import Cookbook from './components/Cookbook';
 import CookbookDetail from './components/CookbookDetail';
+import PantryInventory from './components/PantryInventory';
+import BarcodeScanner from './components/BarcodeScanner';
 import { SpoonacularRecipeSummary } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -22,6 +24,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>('scan');
   const [viewState, setViewState] = useState<'scan' | 'recipe-list' | 'recipe-details' | 'cookbook-details'>('scan');
   const [selectedCookbookId, setSelectedCookbookId] = useState<string | null>(null);
+  const [scanSubView, setScanSubView] = useState<'scan' | 'inventory' | 'barcode-scanner'>('scan');
 
   // Scanned / Loaded ingredients state
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
@@ -147,9 +150,10 @@ export default function App() {
   const handleTabChange = (tab: AppTab) => {
     setActiveTab(tab);
     setViewState('scan'); // Reset inner view to root of the tab
+    setScanSubView('scan');
   };
 
-  const showGlobalHeader = viewState !== 'recipe-details' && viewState !== 'cookbook-details';
+  const showGlobalHeader = viewState !== 'recipe-details' && viewState !== 'cookbook-details' && scanSubView !== 'barcode-scanner';
   const headerTitle = viewState === 'recipe-list' ? 'Recetas' : TAB_TITLES[activeTab];
 
   return (
@@ -170,8 +174,19 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {viewState === 'scan' && (
-                  <ScanPantry onSearchRecipes={handleSearchRecipes} />
+                {viewState === 'scan' && scanSubView === 'scan' && (
+                  <ScanPantry onSearchRecipes={handleSearchRecipes} onOpenInventory={() => setScanSubView('inventory')} />
+                )}
+
+                {viewState === 'scan' && scanSubView === 'inventory' && (
+                  <PantryInventory onOpenScanner={() => setScanSubView('barcode-scanner')} />
+                )}
+
+                {viewState === 'scan' && scanSubView === 'barcode-scanner' && (
+                  <BarcodeScanner
+                    onBack={() => setScanSubView('inventory')}
+                    onDone={() => setScanSubView('inventory')}
+                  />
                 )}
 
                 {viewState === 'recipe-list' && (

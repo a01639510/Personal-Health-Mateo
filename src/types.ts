@@ -36,8 +36,9 @@ export interface SpoonacularRecipeSummary {
   image: string;
   usedIngredientCount: number;
   missedIngredientCount: number;
-  usedIngredients: { name: string; amount?: number; unit?: string }[];
-  missedIngredients: { name: string; amount?: number; unit?: string }[];
+  missedIngredientCountSecondary: number;
+  usedIngredients: { name: string; amount?: number; unit?: string; isSecondary?: boolean }[];
+  missedIngredients: { name: string; amount?: number; unit?: string; isSecondary?: boolean }[];
 }
 
 export interface CookbookRecipe {
@@ -54,6 +55,11 @@ export interface CookbookRecipeDetail extends CookbookRecipe {
   ingredients: { name: string; measure: string }[];
   instructions: string;
   video_url: string;
+  calories?: number | null;
+  protein_g?: number | null;
+  carbs_g?: number | null;
+  fat_g?: number | null;
+  nutrition_is_estimated?: boolean;
 }
 
 export interface RecipeDetail {
