@@ -16,6 +16,30 @@ const ai = new GoogleGenAI({
 
 const GEMINI_MODEL = 'gemini-3.5-flash';
 
+function isRetryableGeminiError(error: any): boolean {
+  const msg = (error?.message || '').toString();
+  return /UNAVAILABLE|"code":503|overloaded|high demand/i.test(msg);
+}
+
+async function generateWithRetry(params: Parameters<typeof ai.models.generateContent>[0], retries = 2, baseDelayMs = 1000) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (error: any) {
+      if (attempt === retries || !isRetryableGeminiError(error)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (attempt + 1)));
+    }
+  }
+  throw new Error('No se pudo completar la solicitud a Gemini tras varios intentos.');
+}
+
+function friendlyGeminiErrorMessage(error: any, fallback: string): string {
+  if (isRetryableGeminiError(error)) {
+    return 'El servicio de IA está saturado en este momento. Espera unos segundos e intenta de nuevo.';
+  }
+  return error?.message || fallback;
+}
+
 const recipeCache = new Map<number, any>();
 
 const app = express();
@@ -164,7 +188,7 @@ app.post('/api/identify-ingredients', async (req, res) => {
     const textPart = { text: "Analiza la foto del refrigerador, despensa o ingredientes y detecta todos los ingredientes comestibles visibles. Clasifícalos y califica tu nivel de confianza en la detección." };
     const systemInstruction = "Eres un chef experto e IA de visión avanzada de Google. Detecta todos los ingredientes de alimentos visibles en la imagen. Responde con un JSON estructurado según el esquema solicitado. En la categoría usa nombres cortos en español como: Verdura, Lácteo, Carne, Fruta, Huevo, Salsa, Condimento, Legumbre, Panadería, Pescado u Otros. Para confidence usa únicamente: alta, media, o baja.";
 
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry({
       model: GEMINI_MODEL,
       contents: [imagePart, textPart],
       config: {
@@ -226,7 +250,7 @@ app.post('/api/identify-ingredients', async (req, res) => {
     console.error('Error en /api/identify-ingredients con Gemini:', error);
     res.status(500).json({
       error: 'Error interno del servidor',
-      message: error.message || 'Ocurrió un error inesperado al procesar la foto con Gemini.'
+      message: friendlyGeminiErrorMessage(error, 'Ocurrió un error inesperado al procesar la foto con Gemini.')
     });
   }
 });
@@ -243,7 +267,7 @@ app.post('/api/find-recipes', async (req, res) => {
     const systemInstruction = "Eres un chef profesional creativo de habla hispana. Sugiere de 6 a 10 recetas deliciosas y fáciles que se puedan preparar priorizando la lista de ingredientes que el usuario proporciona. Indica claramente cuántos ingredientes de la lista del usuario se usan (usedIngredients) y cuáles ingredientes adicionales no listados son necesarios (missedIngredients). Responde en formato JSON según el esquema especificado.";
     const promptText = `Sugiéreme recetas deliciosas que pueda preparar usando principalmente estos ingredientes: ${ingredients.join(', ')}.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry({
       model: GEMINI_MODEL,
       contents: promptText,
       config: {
@@ -301,7 +325,7 @@ app.post('/api/find-recipes', async (req, res) => {
     console.error('Error en /api/find-recipes con Gemini:', error);
     res.status(500).json({
       error: 'Error interno al buscar recetas',
-      message: error.message || 'No se pudo conectar con el servicio de recetas de Gemini.'
+      message: friendlyGeminiErrorMessage(error, 'No se pudo conectar con el servicio de recetas de Gemini.')
     });
   }
 });
@@ -337,7 +361,7 @@ app.get('/api/recipe/:id', async (req, res) => {
       : "";
     const promptText = `Genera la receta detallada para: "${title}" ${ingredientsDesc}. Proporciona el tiempo de preparación (readyInMinutes, un número entero entre 10 y 60), el número de porciones (servings, un número entero entre 1 y 6), un resumen corto de 1 párrafo (summary), la lista detallada de ingredientes (extendedIngredients) con sus cantidades y unidades, y los pasos numerados de preparación (analyzedInstructions). También incluye información nutricional con calorías, proteínas, carbohidratos y grasas.`;
 
-    const response = await ai.models.generateContent({
+    const response = await generateWithRetry({
       model: GEMINI_MODEL,
       contents: promptText,
       config: {
@@ -415,7 +439,7 @@ app.get('/api/recipe/:id', async (req, res) => {
     console.error(`Error en GET /api/recipe/${req.params.id} con Gemini:`, error);
     res.status(500).json({
       error: 'Error al obtener detalle de la receta',
-      message: error.message || 'No se pudo generar la información detallada con Gemini.'
+      message: friendlyGeminiErrorMessage(error, 'No se pudo generar la información detallada con Gemini.')
     });
   }
 });
