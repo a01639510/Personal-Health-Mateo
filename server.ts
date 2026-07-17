@@ -18,6 +18,13 @@ const ai = new GoogleGenAI({
   }
 });
 
+const aiAlt = process.env.GEMINI_API_KEY_ALT
+  ? new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY_ALT,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+    })
+  : null;
+
 // In-memory cache for recipes to allow instant detail lookup
 const recipeCache = new Map<number, any>();
 
@@ -26,11 +33,25 @@ function isRetryableGeminiError(error: any): boolean {
   return /UNAVAILABLE|"code":503|overloaded|high demand|RESOURCE_EXHAUSTED|"code":429|quota/i.test(msg);
 }
 
+function isQuotaExhaustedError(error: any): boolean {
+  const msg = (error?.message || '').toString();
+  return /RESOURCE_EXHAUSTED|"code":429|quota/i.test(msg);
+}
+
+// Reintenta con backoff; si la key principal se queda sin cuota y hay una key de
+// respaldo (GEMINI_API_KEY_ALT) configurada, cambia a esa automáticamente.
 async function generateWithRetry(params: Parameters<typeof ai.models.generateContent>[0], retries = 2, baseDelayMs = 1000) {
+  let client = ai;
+  let switchedToAlt = false;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await ai.models.generateContent(params);
+      return await client.models.generateContent(params);
     } catch (error: any) {
+      if (isQuotaExhaustedError(error) && aiAlt && !switchedToAlt) {
+        client = aiAlt;
+        switchedToAlt = true;
+        continue;
+      }
       if (attempt === retries || !isRetryableGeminiError(error)) throw error;
       await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (attempt + 1)));
     }
@@ -821,12 +842,19 @@ app.post('/api/admin/translate-recipes', async (req, res) => {
 
     const limitNum = Math.min(50, Math.max(1, parseInt((req.body?.limit ?? req.query?.limit ?? '40') as string, 10) || 40));
 
-    const { data: pending, error: fetchError } = await supabase
+    const { data: pendingPool, error: fetchError } = await supabase
       .from('recipes')
       .select('id, title, instructions, ingredients')
       .is('title_es', null)
-      .limit(limitNum);
+      .limit(300);
     if (fetchError) throw fetchError;
+
+    // Prioriza recetas con pollo mientras se agota la cuota de Gemini.
+    const isChickenRecipe = (r: any) =>
+      /chicken/i.test(r.title) || (r.ingredients || []).some((i: any) => /chicken/i.test(i.name || ''));
+    const pending = [...(pendingPool || [])]
+      .sort((a, b) => Number(isChickenRecipe(b)) - Number(isChickenRecipe(a)))
+      .slice(0, limitNum);
 
     const { count: remainingBefore } = await supabase
       .from('recipes')
