@@ -2,6 +2,7 @@ import React from 'react';
 import { ChefHat, ArrowRight, Check, AlertCircle, ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SpoonacularRecipeSummary } from '../types';
+import Skeleton from './Skeleton';
 
 interface RecipeListProps {
   recipes: SpoonacularRecipeSummary[];
@@ -14,14 +15,20 @@ interface RecipeListProps {
 export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, loading, error }: RecipeListProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-20">
-        <div className="w-14 h-14 rounded-full bg-[#F5F5F7] flex items-center justify-center mb-4">
-          <ChefHat className="w-6 h-6 text-black/70 animate-bounce" strokeWidth={1.75} />
+      <div className="space-y-4 pt-2">
+        <div className="px-0.5">
+          <h2 className="text-[19px] font-bold text-[var(--text-primary)]">Buscando recetas</h2>
+          <p className="text-[12px] text-[var(--text-primary)]/40">Calculando las mejores combinaciones...</p>
         </div>
-        <h3 className="text-[16px] font-bold text-black mb-1">Buscando recetas</h3>
-        <p className="text-black/40 text-[13px] max-w-[260px] leading-relaxed">
-          Calculando las mejores combinaciones con tus ingredientes...
-        </p>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-[28px] overflow-hidden">
+            <Skeleton className="h-44 w-full rounded-[28px]" />
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-4 w-3/4 rounded-md" />
+              <Skeleton className="h-3 w-1/2 rounded-md" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -29,16 +36,16 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
   if (error) {
     return (
       <div className="pt-10 text-center space-y-5">
-        <div className="bg-[#FFF1F0] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
+        <div className="bg-[var(--danger-bg)] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
           <AlertCircle className="w-7 h-7 text-[#ff3b30]" strokeWidth={1.75} />
         </div>
         <div>
-          <h3 className="text-[16px] font-bold text-black mb-1.5">{error.message}</h3>
-          {error.details && <p className="text-[13px] text-black/40 leading-relaxed px-4">{error.details}</p>}
+          <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-1.5">{error.message}</h3>
+          {error.details && <p className="text-[13px] text-[var(--text-primary)]/40 leading-relaxed px-4">{error.details}</p>}
         </div>
         <button
           onClick={onBackToScan}
-          className="bg-black text-white font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+          className="bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
         >
           Volver a escanear
         </button>
@@ -51,16 +58,16 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
   if (sortedRecipes.length === 0) {
     return (
       <div className="pt-10 text-center space-y-4">
-        <div className="bg-[#F5F5F7] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
-          <ChefHat className="w-7 h-7 text-black/40" strokeWidth={1.75} />
+        <div className="bg-[var(--bg-surface)] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
+          <ChefHat className="w-7 h-7 text-[var(--text-primary)]/40" strokeWidth={1.75} />
         </div>
-        <h3 className="text-[16px] font-bold text-black">No se encontraron recetas</h3>
-        <p className="text-[13px] text-black/40 leading-relaxed px-4">
+        <h3 className="text-[16px] font-bold text-[var(--text-primary)]">No se encontraron recetas</h3>
+        <p className="text-[13px] text-[var(--text-primary)]/40 leading-relaxed px-4">
           Prueba agregando ingredientes básicos como aceite, sal, ajo o verduras comunes.
         </p>
         <button
           onClick={onBackToScan}
-          className="bg-black text-white font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+          className="bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
         >
           Añadir ingredientes
         </button>
@@ -72,12 +79,12 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
     <div className="space-y-4 pt-2">
       <div className="flex items-center justify-between px-0.5">
         <div>
-          <h2 className="text-[19px] font-bold text-black">Recetas sugeridas</h2>
-          <p className="text-[12px] text-black/40">{sortedRecipes.length} coincidencias con tu refri</p>
+          <h2 className="text-[19px] font-bold text-[var(--text-primary)]">Recetas sugeridas</h2>
+          <p className="text-[12px] text-[var(--text-primary)]/40">{sortedRecipes.length} coincidencias con tu refri</p>
         </div>
         <button
           onClick={onBackToScan}
-          className="text-[12px] font-semibold text-black/50 cursor-pointer"
+          className="text-[12px] font-semibold text-[var(--text-primary)]/50 cursor-pointer"
         >
           Editar
         </button>
@@ -94,9 +101,9 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(idx * 0.05, 0.3) }}
               onClick={() => onSelectRecipe(recipe.id)}
-              className="bg-white rounded-[28px] overflow-hidden cursor-pointer active:scale-[0.99] transition-transform shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
+              className="bg-[var(--bg-surface)] rounded-[28px] overflow-hidden cursor-pointer active:scale-[0.99] transition-transform shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
             >
-              <div className="relative h-44 overflow-hidden bg-[#F5F5F7]">
+              <div className="relative h-44 overflow-hidden bg-[var(--bg-surface)]">
                 <img
                   src={recipe.image}
                   alt={recipe.title}
@@ -121,17 +128,17 @@ export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, load
               </div>
 
               <div className="p-4 space-y-3">
-                <h3 className="text-[16px] font-bold text-black leading-snug line-clamp-2">
+                <h3 className="text-[16px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2">
                   {recipe.title}
                 </h3>
 
                 {recipe.usedIngredients && recipe.usedIngredients.length > 0 && (
-                  <p className="text-[12px] text-black/40 capitalize line-clamp-1 leading-relaxed">
+                  <p className="text-[12px] text-[var(--text-primary)]/40 capitalize line-clamp-1 leading-relaxed">
                     {recipe.usedIngredients.map(i => i.name).join(' · ')}
                   </p>
                 )}
 
-                <div className="pt-2.5 border-t border-black/[0.05] flex items-center justify-between text-[12.5px] font-semibold text-black/70">
+                <div className="pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[12.5px] font-semibold text-[var(--text-primary)]/70">
                   <span>Ver receta</span>
                   <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.25} />
                 </div>

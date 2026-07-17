@@ -3,6 +3,7 @@ import { ChevronLeft, Heart, Loader2, Clock, Check, Utensils, AlertCircle, Copy,
 import { motion, AnimatePresence } from 'motion/react';
 import { RecipeDetail } from '../types';
 import MacroRing from './MacroRing';
+import Skeleton from './Skeleton';
 
 interface RecipeDetailsProps {
   recipeId: number;
@@ -113,12 +114,21 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-24">
-        <Loader2 className="w-8 h-8 text-black/60 animate-spin mb-4" strokeWidth={2} />
-        <h3 className="text-[16px] font-bold text-black mb-1">Cargando receta</h3>
-        <p className="text-black/40 text-[13px] max-w-[260px] leading-relaxed">
-          Obteniendo ingredientes, pasos y macros...
-        </p>
+      <div className="pt-2 pb-2">
+        <Skeleton className="h-80 w-full rounded-[28px]" />
+        <div className="mt-5 rounded-[28px] overflow-hidden">
+          <Skeleton className="h-56 w-full rounded-[28px]" />
+        </div>
+        <div className="mt-6 space-y-2">
+          <Skeleton className="h-4 w-24 rounded-md" />
+          <Skeleton className="h-16 w-full rounded-[24px]" />
+        </div>
+        <div className="mt-6 space-y-3">
+          <Skeleton className="h-4 w-28 rounded-md" />
+          <Skeleton className="h-4 w-full rounded-md" />
+          <Skeleton className="h-4 w-full rounded-md" />
+          <Skeleton className="h-4 w-2/3 rounded-md" />
+        </div>
       </div>
     );
   }
@@ -126,23 +136,23 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
   if (error || !recipe) {
     return (
       <div className="pt-10 text-center space-y-5">
-        <div className="bg-[#FFF1F0] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
+        <div className="bg-[var(--danger-bg)] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
           <AlertCircle className="w-7 h-7 text-[#ff3b30]" strokeWidth={1.75} />
         </div>
         <div>
-          <h3 className="text-[16px] font-bold text-black mb-1.5">{error?.message || 'Error desconocido'}</h3>
-          {error?.details && <p className="text-[13px] text-black/40 leading-relaxed px-4">{error.details}</p>}
+          <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-1.5">{error?.message || 'Error desconocido'}</h3>
+          {error?.details && <p className="text-[13px] text-[var(--text-primary)]/40 leading-relaxed px-4">{error.details}</p>}
         </div>
         <div className="flex gap-3 justify-center">
           <button
             onClick={onBack}
-            className="bg-[#F5F5F7] text-black font-semibold px-5 py-2.5 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+            className="bg-[var(--bg-surface)] text-[var(--text-primary)] font-semibold px-5 py-2.5 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
           >
             Atrás
           </button>
           <button
             onClick={fetchRecipeDetail}
-            className="bg-black text-white font-semibold px-5 py-2.5 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
+            className="bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold px-5 py-2.5 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
           >
             Reintentar
           </button>
@@ -182,7 +192,7 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
             onClick={onBack}
             className="w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
           >
-            <ChevronLeft className="w-5 h-5 text-black" strokeWidth={2.25} />
+            <ChevronLeft className="w-5 h-5" color="#0a0a0a" strokeWidth={2.25} />
           </button>
 
           <button
@@ -191,7 +201,7 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
             className="w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 text-black animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" color="#0a0a0a" />
             ) : (
               <Heart className="w-[18px] h-[18px]" strokeWidth={2} color="#0a0a0a" fill={isSaved ? '#0a0a0a' : 'none'} />
             )}
@@ -225,7 +235,7 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            className="mt-4 bg-black text-white px-4 py-3 rounded-2xl flex items-center gap-2.5 text-[13px] font-semibold"
+            className="mt-4 bg-[var(--accent)] text-[var(--accent-foreground)] px-4 py-3 rounded-2xl flex items-center gap-2.5 text-[13px] font-semibold"
           >
             <Check className="w-4 h-4" strokeWidth={2.5} />
             <span>Guardada en favoritos</span>
@@ -235,23 +245,23 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
       {/* Macro Rings Panel */}
       {calories > 0 && (
-        <div className="mt-5 bg-[#F5F5F7] rounded-[28px] p-6">
+        <div className="mt-5 bg-[var(--bg-surface)] rounded-[28px] p-6">
           <div className="flex items-center justify-center mb-6">
-            <MacroRing value={calories} max={800} size={126} strokeWidth={10} color="var(--ring-calories)">
+            <MacroRing value={calories} max={800} size={126} strokeWidth={10} color="var(--ring-calories)" delay={0.1}>
               <div className="text-center">
-                <div className="text-[26px] font-extrabold text-black leading-none tracking-tight">{calories}</div>
-                <div className="text-[11px] text-black/40 font-semibold mt-1">kcal</div>
+                <div className="text-[26px] font-extrabold text-[var(--text-primary)] leading-none tracking-tight">{calories}</div>
+                <div className="text-[11px] text-[var(--text-primary)]/40 font-semibold mt-1">kcal</div>
               </div>
             </MacroRing>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
-            {macros.map((m) => (
+            {macros.map((m, idx) => (
               <div key={m.label} className="flex flex-col items-center gap-2">
-                <MacroRing value={m.value} max={m.max} size={56} strokeWidth={5} color={m.color}>
-                  <span className="text-[12px] font-bold text-black">{m.value}g</span>
+                <MacroRing value={m.value} max={m.max} size={56} strokeWidth={5} color={m.color} delay={0.45 + idx * 0.12}>
+                  <span className="text-[12px] font-bold text-[var(--text-primary)]">{m.value}g</span>
                 </MacroRing>
-                <span className="text-[11px] text-black/40 font-medium">{m.label}</span>
+                <span className="text-[11px] text-[var(--text-primary)]/40 font-medium">{m.label}</span>
               </div>
             ))}
           </div>
@@ -260,17 +270,17 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
       {/* Ingredients Panel */}
       <div className="mt-6">
-        <h3 className="text-[16px] font-bold text-black mb-2 px-0.5">Ingredientes</h3>
-        <div className="bg-[#F5F5F7] rounded-[24px] px-4">
+        <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-2 px-0.5">Ingredientes</h3>
+        <div className="bg-[var(--bg-surface)] rounded-[24px] px-4">
           {recipe.extendedIngredients.map((ing, i) => (
             <div
               key={`${ing.name}-${i}`}
               className={`flex justify-between items-center py-3.5 text-[13.5px] capitalize ${
-                i !== recipe.extendedIngredients.length - 1 ? 'border-b border-black/[0.05]' : ''
+                i !== recipe.extendedIngredients.length - 1 ? 'border-b border-[var(--border-subtle)]' : ''
               }`}
             >
-              <span className="text-black font-medium leading-tight pr-3">{ing.name}</span>
-              <span className="text-black/40 font-medium flex-shrink-0 text-right">
+              <span className="text-[var(--text-primary)] font-medium leading-tight pr-3">{ing.name}</span>
+              <span className="text-[var(--text-primary)]/40 font-medium flex-shrink-0 text-right">
                 {Math.round(ing.amount * 10) / 10} {ing.unit}
               </span>
             </div>
@@ -280,27 +290,27 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
 
       {/* Steps Panel */}
       <div className="mt-6">
-        <h3 className="text-[16px] font-bold text-black mb-3 px-0.5">Preparación</h3>
+        <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-3 px-0.5">Preparación</h3>
 
         {steps.length > 0 ? (
           <div className="space-y-4">
             {steps.map((step, idx) => (
               <div key={step.number} className="flex gap-3.5">
-                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-black flex items-center justify-center font-bold text-[12px] text-white">
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[var(--accent)] flex items-center justify-center font-bold text-[12px] text-[var(--accent-foreground)]">
                   {idx + 1}
                 </div>
-                <p className="text-[13.5px] text-black/70 leading-relaxed pt-0.5">
+                <p className="text-[13.5px] text-[var(--text-primary)]/70 leading-relaxed pt-0.5">
                   {step.step}
                 </p>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-10 text-black/40 text-[13px] bg-[#F5F5F7] rounded-[24px] px-6">
+          <div className="text-center py-10 text-[var(--text-primary)]/40 text-[13px] bg-[var(--bg-surface)] rounded-[24px] px-6">
             <p>No hay instrucciones estructuradas para esta receta.</p>
             {recipe.summary && (
               <div
-                className="mt-4 text-left text-black/50 leading-relaxed text-[12px] max-h-48 overflow-y-auto"
+                className="mt-4 text-left text-[var(--text-primary)]/50 leading-relaxed text-[12px] max-h-48 overflow-y-auto"
                 dangerouslySetInnerHTML={{ __html: recipe.summary }}
               />
             )}
@@ -323,40 +333,40 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 60, opacity: 0 }}
               transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              className="w-full max-w-[430px] bg-white rounded-t-[28px] p-6 pb-safe space-y-4 text-left max-h-[85vh] overflow-y-auto"
+              className="w-full max-w-[430px] bg-[var(--bg-surface)] rounded-t-[28px] p-6 pb-safe space-y-4 text-left max-h-[85vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-9 h-1 bg-black/10 rounded-full mx-auto mb-1" />
+              <div className="w-9 h-1 bg-[var(--text-primary)]/10 rounded-full mx-auto mb-1" />
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Database className="w-5 h-5 text-black/60" strokeWidth={1.75} />
-                  <h3 className="text-[16px] font-bold text-black">{saveError.message}</h3>
+                  <Database className="w-5 h-5 text-[var(--text-primary)]/60" strokeWidth={1.75} />
+                  <h3 className="text-[16px] font-bold text-[var(--text-primary)]">{saveError.message}</h3>
                 </div>
                 <button
                   onClick={() => setSaveError(null)}
-                  className="w-8 h-8 rounded-full bg-[#F5F5F7] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[var(--bg-surface)] flex items-center justify-center cursor-pointer"
                 >
-                  <X className="w-4 h-4 text-black/50" />
+                  <X className="w-4 h-4 text-[var(--text-primary)]/50" />
                 </button>
               </div>
 
               {saveError.isSchemaMissing && saveError.sql ? (
                 <div className="space-y-4">
-                  <p className="text-[13px] text-black/50 leading-relaxed">
+                  <p className="text-[13px] text-[var(--text-primary)]/50 leading-relaxed">
                     Supabase está conectado. Ejecuta este script SQL en el editor de consultas para poder guardar recetas favoritas:
                   </p>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-black/35 uppercase tracking-wide font-semibold">Script SQL</span>
+                      <span className="text-[11px] text-[var(--text-primary)]/35 uppercase tracking-wide font-semibold">Script SQL</span>
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(saveError.sql || '');
                           setCopied(true);
                           setTimeout(() => setCopied(false), 2500);
                         }}
-                        className="flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-full bg-[#F5F5F7] text-black/70 cursor-pointer"
+                        className="flex items-center gap-1.5 text-[12px] font-semibold px-2.5 py-1.5 rounded-full bg-[var(--bg-surface)] text-[var(--text-primary)]/70 cursor-pointer"
                       >
                         {copied ? (
                           <>
@@ -377,14 +387,14 @@ export default function RecipeDetails({ recipeId, onBack, onSaveSuccess, savedSp
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#FFF1F0] rounded-2xl p-3.5 text-[12.5px] text-[#B4231A]">
+                <div className="bg-[var(--danger-bg)] rounded-2xl p-3.5 text-[12.5px] text-[var(--danger-fg)]">
                   {saveError.details}
                 </div>
               )}
 
               <button
                 onClick={() => setSaveError(null)}
-                className="w-full bg-black text-white font-semibold py-3.5 rounded-full text-[14px] cursor-pointer active:scale-[0.98] transition-transform"
+                className="w-full bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold py-3.5 rounded-full text-[14px] cursor-pointer active:scale-[0.98] transition-transform"
               >
                 Entendido
               </button>

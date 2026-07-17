@@ -141,7 +141,7 @@ export default function App() {
   const headerTitle = viewState === 'recipe-list' ? 'Recetas' : TAB_TITLES[activeTab];
 
   return (
-    <div className="min-h-screen bg-white text-[#0a0a0a]">
+    <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)]">
       <div className="max-w-[430px] mx-auto min-h-screen flex flex-col relative">
         {showGlobalHeader && (
           <Header title={headerTitle} onTitleTap={() => handleTabChange('scan')} />
