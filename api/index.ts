@@ -1,14 +1,10 @@
 import express from 'express';
-import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import { GoogleGenAI, Type } from '@google/genai';
 
-// Load environment variables in development
 dotenv.config();
 
-// Initialize Gemini API Client
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY || '',
   httpOptions: {
@@ -18,8 +14,7 @@ const ai = new GoogleGenAI({
   }
 });
 
-// In-memory cache for recipes to allow instant detail lookup
-const recipeCache = new Map<number, any>();
+const GEMINI_MODEL = 'gemini-3.5-flash';
 
 function isRetryableGeminiError(error: any): boolean {
   const msg = (error?.message || '').toString();
@@ -45,13 +40,12 @@ function friendlyGeminiErrorMessage(error: any, fallback: string): string {
   return error?.message || fallback;
 }
 
-const app = express();
-const PORT = 3000;
+const recipeCache = new Map<number, any>();
 
-// Increase payload limit for base64 image uploads
+const app = express();
+
 app.use(express.json({ limit: '15mb' }));
 
-// Initialize Supabase Client lazily or gracefully
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
@@ -60,7 +54,6 @@ if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
 }
 
-// SQL helper for users to configure their Supabase tables
 const DATABASE_SETUP_SQL = `-- Copia y ejecuta este script SQL en el "SQL Editor" de tu panel de Supabase:
 
 -- 1. Tabla de Recetas Favoritas
@@ -74,7 +67,6 @@ CREATE TABLE IF NOT EXISTS public.saved_recipes (
     saved_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Habilitar RLS y crear políticas para permitir acceso libre (anon/authenticated)
 ALTER TABLE public.saved_recipes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir todo en saved_recipes" ON public.saved_recipes FOR ALL USING (true) WITH CHECK (true);
 
@@ -88,9 +80,6 @@ CREATE TABLE IF NOT EXISTS public.pantry_scans (
 
 ALTER TABLE public.pantry_scans ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Permitir todo en pantry_scans" ON public.pantry_scans FOR ALL USING (true) WITH CHECK (true);
-
--- 3. Crear el storage bucket pantry-photos (si quieres guardar fotos)
--- Nota: Puedes crear el bucket "pantry-photos" con acceso público en la pestaña "Storage" de Supabase.
 `;
 
 function isSchemaError(error: any): boolean {
@@ -99,10 +88,10 @@ function isSchemaError(error: any): boolean {
   const errDetails = (error.details || '').toLowerCase();
   const errCode = error.code || '';
   return (
-    errCode === '42P01' || 
+    errCode === '42P01' ||
     errCode === 'PGRST205' ||
-    errMsg.includes('does not exist') || 
-    errMsg.includes('no existe la relación') || 
+    errMsg.includes('does not exist') ||
+    errMsg.includes('no existe la relación') ||
     errMsg.includes('schema cache') ||
     errMsg.includes('could not find the table') ||
     errDetails.includes('does not exist') ||
@@ -111,7 +100,6 @@ function isSchemaError(error: any): boolean {
   );
 }
 
-// Helper to check for required keys
 function checkEnvKeys(keys: string[], res: express.Response): boolean {
   const missing = keys.filter(key => !process.env[key]);
   if (missing.length > 0) {
@@ -122,7 +110,8 @@ function checkEnvKeys(keys: string[], res: express.Response): boolean {
     return false;
   }
   return true;
-}// Helper to choose a beautiful high-res Unsplash food image based on keywords in title
+}
+
 function getFoodImage(title: string): string {
   const t = title.toLowerCase();
   if (t.includes('pasta') || t.includes('fideos') || t.includes('tallarines') || t.includes('lasaña') || t.includes('spaghetti') || t.includes('macarrones')) {
@@ -155,23 +144,18 @@ function getFoodImage(title: string): string {
   if (t.includes('jugo') || t.includes('bebida') || t.includes('licuado') || t.includes('cocktail') || t.includes('cafe') || t.includes('té')) {
     return 'https://images.unsplash.com/photo-1497534446932-c925b458314e?w=600&auto=format&fit=crop&q=80';
   }
-  // Default general food
   return 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&auto=format&fit=crop&q=80';
 }
 
-// 1. ENDPOINT: Identify Ingredients from Fridge Photo
 app.post('/api/identify-ingredients', async (req, res) => {
   try {
-    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) return;
 
     const { imageBase64 } = req.body;
     if (!imageBase64) {
       return res.status(400).json({ error: 'Falta la imagen en formato base64' });
     }
 
-    // Clean base64 string if it contains prefix
     let base64Data = imageBase64;
     let mimeType = 'image/jpeg';
     if (imageBase64.includes(';base64,')) {
@@ -180,27 +164,19 @@ app.post('/api/identify-ingredients', async (req, res) => {
       base64Data = parts[1];
     }
 
-    // Upload to Supabase Storage if configured
     let photoUrl = '';
     if (supabase) {
       try {
         const buffer = Buffer.from(base64Data, 'base64');
         const fileName = `pantry_${Date.now()}.jpg`;
-
-        // Upload buffer directly
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('pantry-photos')
-          .upload(fileName, buffer, {
-            contentType: mimeType,
-            upsert: true
-          });
+          .upload(fileName, buffer, { contentType: mimeType, upsert: true });
 
         if (uploadError) {
           console.error('Error al subir foto a Supabase Storage:', uploadError);
         } else {
-          const { data: publicUrlData } = supabase.storage
-            .from('pantry-photos')
-            .getPublicUrl(fileName);
+          const { data: publicUrlData } = supabase.storage.from('pantry-photos').getPublicUrl(fileName);
           photoUrl = publicUrlData?.publicUrl || '';
         }
       } catch (storageErr) {
@@ -208,22 +184,12 @@ app.post('/api/identify-ingredients', async (req, res) => {
       }
     }
 
-    // Call Gemini API using the modern @google/genai SDK
-    const imagePart = {
-      inlineData: {
-        mimeType: mimeType,
-        data: base64Data,
-      },
-    };
-
-    const textPart = {
-      text: "Analiza la foto del refrigerador, despensa o ingredientes y detecta todos los ingredientes comestibles visibles. Clasifícalos y califica tu nivel de confianza en la detección.",
-    };
-
+    const imagePart = { inlineData: { mimeType, data: base64Data } };
+    const textPart = { text: "Analiza la foto del refrigerador, despensa o ingredientes y detecta todos los ingredientes comestibles visibles. Clasifícalos y califica tu nivel de confianza en la detección." };
     const systemInstruction = "Eres un chef experto e IA de visión avanzada de Google. Detecta todos los ingredientes de alimentos visibles en la imagen. Responde con un JSON estructurado según el esquema solicitado. En la categoría usa nombres cortos en español como: Verdura, Lácteo, Carne, Fruta, Huevo, Salsa, Condimento, Legumbre, Panadería, Pescado u Otros. Para confidence usa únicamente: alta, media, o baja.";
 
     const response = await generateWithRetry({
-      model: "gemini-3.5-flash",
+      model: GEMINI_MODEL,
       contents: [imagePart, textPart],
       config: {
         systemInstruction,
@@ -237,8 +203,8 @@ app.post('/api/identify-ingredients', async (req, res) => {
                 type: Type.OBJECT,
                 properties: {
                   name: { type: Type.STRING, description: "Nombre del ingrediente en español (ej: jitomate, leche, pollo)" },
-                  category: { type: Type.STRING, description: "Categoría del ingrediente (ej: Verdura, Lácteo, Carne, Fruta, Huevo, Condimento, Bebida, etc.)" },
-                  confidence: { type: Type.STRING, description: "Nivel de certeza de la detección: alta, media, baja" }
+                  category: { type: Type.STRING, description: "Categoría del ingrediente" },
+                  confidence: { type: Type.STRING, description: "alta, media, baja" }
                 },
                 required: ["name", "category", "confidence"]
               }
@@ -256,19 +222,14 @@ app.post('/api/identify-ingredients', async (req, res) => {
       throw new Error("Formato de respuesta inválido de Gemini");
     }
 
-    // Save scan to database pantry_scans if supabase is active
     let savedScan = null;
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('pantry_scans')
-          .insert({
-            photo_url: photoUrl || null,
-            detected_items: parsedResult.ingredients
-          })
+          .insert({ photo_url: photoUrl || null, detected_items: parsedResult.ingredients })
           .select()
           .single();
-
         if (error) {
           console.error('Error al guardar escaneo en Supabase pantry_scans:', error);
         } else {
@@ -285,7 +246,6 @@ app.post('/api/identify-ingredients', async (req, res) => {
       photoUrl: photoUrl || null,
       ingredients: parsedResult.ingredients
     });
-
   } catch (error: any) {
     console.error('Error en /api/identify-ingredients con Gemini:', error);
     res.status(500).json({
@@ -295,12 +255,9 @@ app.post('/api/identify-ingredients', async (req, res) => {
   }
 });
 
-// 2. ENDPOINT: Find Recipes by Ingredients List
 app.post('/api/find-recipes', async (req, res) => {
   try {
-    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) return;
 
     const { ingredients } = req.body;
     if (!ingredients || !Array.isArray(ingredients) || ingredients.length === 0) {
@@ -308,11 +265,10 @@ app.post('/api/find-recipes', async (req, res) => {
     }
 
     const systemInstruction = "Eres un chef profesional creativo de habla hispana. Sugiere de 6 a 10 recetas deliciosas y fáciles que se puedan preparar priorizando la lista de ingredientes que el usuario proporciona. Indica claramente cuántos ingredientes de la lista del usuario se usan (usedIngredients) y cuáles ingredientes adicionales no listados son necesarios (missedIngredients). Responde en formato JSON según el esquema especificado.";
-
     const promptText = `Sugiéreme recetas deliciosas que pueda preparar usando principalmente estos ingredientes: ${ingredients.join(', ')}.`;
 
     const response = await generateWithRetry({
-      model: "gemini-3.5-flash",
+      model: GEMINI_MODEL,
       contents: promptText,
       config: {
         systemInstruction,
@@ -325,19 +281,15 @@ app.post('/api/find-recipes', async (req, res) => {
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  id: { type: Type.INTEGER, description: "Un ID numérico único secuencial entre 10000 y 99999" },
-                  title: { type: Type.STRING, description: "Nombre atractivo e instructivo de la receta" },
-                  usedIngredientCount: { type: Type.INTEGER, description: "Número de ingredientes usados de la lista original" },
-                  missedIngredientCount: { type: Type.INTEGER, description: "Número de ingredientes faltantes que se necesitan comprar" },
+                  id: { type: Type.INTEGER, description: "ID numérico único entre 10000 y 99999" },
+                  title: { type: Type.STRING },
+                  usedIngredientCount: { type: Type.INTEGER },
+                  missedIngredientCount: { type: Type.INTEGER },
                   usedIngredients: {
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING, description: "Nombre del ingrediente usado" },
-                        amount: { type: Type.NUMBER },
-                        unit: { type: Type.STRING }
-                      },
+                      properties: { name: { type: Type.STRING }, amount: { type: Type.NUMBER }, unit: { type: Type.STRING } },
                       required: ["name"]
                     }
                   },
@@ -345,11 +297,7 @@ app.post('/api/find-recipes', async (req, res) => {
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
-                      properties: {
-                        name: { type: Type.STRING, description: "Nombre del ingrediente faltante" },
-                        amount: { type: Type.NUMBER },
-                        unit: { type: Type.STRING }
-                      },
+                      properties: { name: { type: Type.STRING }, amount: { type: Type.NUMBER }, unit: { type: Type.STRING } },
                       required: ["name"]
                     }
                   }
@@ -367,19 +315,12 @@ app.post('/api/find-recipes', async (req, res) => {
     const parsedResult = JSON.parse(responseText.trim());
 
     const recipes = (parsedResult.recipes || []).map((recipe: any) => {
-      const imageUrl = getFoodImage(recipe.title);
-      const enrichedRecipe = {
-        ...recipe,
-        image: imageUrl
-      };
-      
-      // Store in server cache
+      const enrichedRecipe = { ...recipe, image: getFoodImage(recipe.title) };
       recipeCache.set(recipe.id, enrichedRecipe);
       return enrichedRecipe;
     });
 
     res.json({ recipes });
-
   } catch (error: any) {
     console.error('Error en /api/find-recipes con Gemini:', error);
     res.status(500).json({
@@ -389,55 +330,39 @@ app.post('/api/find-recipes', async (req, res) => {
   }
 });
 
-// 3. ENDPOINT: Recipe Detailed Information
 app.get('/api/recipe/:id', async (req, res) => {
   try {
-    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['GEMINI_API_KEY'], res)) return;
 
     const recipeId = Number(req.params.id);
     let cached = recipeCache.get(recipeId);
 
-    // If not in cache, let's check if it exists in saved_recipes in Supabase
     let title = "";
     if (!cached && supabase) {
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('saved_recipes')
           .eq('spoonacular_id', recipeId)
           .select('*')
           .maybeSingle();
-
         if (data) {
-          cached = {
-            id: recipeId,
-            title: data.title,
-            image: data.image_url,
-            usedIngredients: data.ingredients || []
-          };
+          cached = { id: recipeId, title: data.title, image: data.image_url, usedIngredients: data.ingredients || [] };
         }
       } catch (dbErr) {
         console.error('Error al recuperar receta guardada para generar detalle:', dbErr);
       }
     }
 
-    if (!cached) {
-      title = "Receta Saludable de ChefScan";
-    } else {
-      title = cached.title;
-    }
+    title = cached ? cached.title : "Receta Saludable de ChefScan";
 
     const systemInstruction = "Eres un chef experto de habla hispana. Tu labor es detallar por completo las instrucciones de preparación, resumen, ingredientes detallados con cantidades (extendedIngredients) y desglose nutricional de una receta de cocina específica. Responde en formato JSON cumpliendo exactamente con el esquema esperado.";
-
-    const ingredientsDesc = cached && cached.usedIngredients 
+    const ingredientsDesc = cached && cached.usedIngredients
       ? `que usa ingredientes como: ${cached.usedIngredients.map((i: any) => i.name).join(', ')}`
       : "";
-
-    const promptText = `Genera la receta detallada para: "${title}" ${ingredientsDesc}. Proporciona el tiempo de preparación (readyInMinutes, un número entero entre 10 y 60), el número de porciones (servings, un número entero entre 1 y 6), un resumen corto de 1 párrafo (summary, en HTML básico o texto plano), la lista detallada de ingredientes (extendedIngredients) con sus cantidades y unidades, y los pasos numerados de preparación (analyzedInstructions). También incluye información nutricional con calorías, proteínas, carbohidratos y grasas.`;
+    const promptText = `Genera la receta detallada para: "${title}" ${ingredientsDesc}. Proporciona el tiempo de preparación (readyInMinutes, un número entero entre 10 y 60), el número de porciones (servings, un número entero entre 1 y 6), un resumen corto de 1 párrafo (summary), la lista detallada de ingredientes (extendedIngredients) con sus cantidades y unidades, y los pasos numerados de preparación (analyzedInstructions). También incluye información nutricional con calorías, proteínas, carbohidratos y grasas.`;
 
     const response = await generateWithRetry({
-      model: "gemini-3.5-flash",
+      model: GEMINI_MODEL,
       contents: promptText,
       config: {
         systemInstruction,
@@ -452,12 +377,7 @@ app.get('/api/recipe/:id', async (req, res) => {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
-                properties: {
-                  name: { type: Type.STRING },
-                  original: { type: Type.STRING },
-                  amount: { type: Type.NUMBER },
-                  unit: { type: Type.STRING }
-                },
+                properties: { name: { type: Type.STRING }, original: { type: Type.STRING }, amount: { type: Type.NUMBER }, unit: { type: Type.STRING } },
                 required: ["name", "original", "amount", "unit"]
               }
             },
@@ -471,10 +391,7 @@ app.get('/api/recipe/:id', async (req, res) => {
                     type: Type.ARRAY,
                     items: {
                       type: Type.OBJECT,
-                      properties: {
-                        number: { type: Type.INTEGER },
-                        step: { type: Type.STRING }
-                      },
+                      properties: { number: { type: Type.INTEGER }, step: { type: Type.STRING } },
                       required: ["number", "step"]
                     }
                   }
@@ -489,11 +406,7 @@ app.get('/api/recipe/:id', async (req, res) => {
                   type: Type.ARRAY,
                   items: {
                     type: Type.OBJECT,
-                    properties: {
-                      name: { type: Type.STRING, description: "Usar nombres exactos en inglés como Calories, Protein, Carbohydrates, Fat" },
-                      amount: { type: Type.NUMBER },
-                      unit: { type: Type.STRING }
-                    },
+                    properties: { name: { type: Type.STRING }, amount: { type: Type.NUMBER }, unit: { type: Type.STRING } },
                     required: ["name", "amount", "unit"]
                   }
                 }
@@ -511,7 +424,7 @@ app.get('/api/recipe/:id', async (req, res) => {
 
     const fullRecipeDetail = {
       id: recipeId,
-      title: title,
+      title,
       image: cached?.image || getFoodImage(title),
       summary: parsedDetail.summary || `Una deliciosa receta de ${title}.`,
       readyInMinutes: parsedDetail.readyInMinutes || 30,
@@ -522,7 +435,6 @@ app.get('/api/recipe/:id', async (req, res) => {
     };
 
     res.json({ recipe: fullRecipeDetail });
-
   } catch (error: any) {
     console.error(`Error en GET /api/recipe/${req.params.id} con Gemini:`, error);
     res.status(500).json({
@@ -532,160 +444,102 @@ app.get('/api/recipe/:id', async (req, res) => {
   }
 });
 
-// 4. ENDPOINT: Save Recipe (Insert into saved_recipes)
 app.post('/api/save-recipe', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
 
     const { spoonacular_id, title, image_url, nutrition, ingredients } = req.body;
-
     if (!spoonacular_id || !title) {
       return res.status(400).json({ error: 'spoonacular_id y title son campos requeridos.' });
     }
-
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
 
     const { data, error } = await supabase
       .from('saved_recipes')
-      .insert({
-        spoonacular_id,
-        title,
-        image_url,
-        nutrition,
-        ingredients
-      })
+      .insert({ spoonacular_id, title, image_url, nutrition, ingredients })
       .select()
       .single();
 
-    if (error) {
-      throw error;
-    }
+    if (error) throw error;
 
     res.json({ success: true, savedRecipe: data });
-
   } catch (error: any) {
     console.error('Error en /api/save-recipe:', error);
     const schemaMissing = isSchemaError(error);
     res.status(500).json({
       error: 'Error al guardar la receta en favoritos',
-      message: schemaMissing 
-        ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' 
-        : (error.message || 'Ocurrió un error al intentar registrar la receta en Supabase.'),
+      message: schemaMissing ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' : (error.message || 'Ocurrió un error al intentar registrar la receta en Supabase.'),
       isSchemaMissing: schemaMissing,
       sql: schemaMissing ? DATABASE_SETUP_SQL : undefined
     });
   }
 });
 
-// 5. ENDPOINT: Fetch All Saved Recipes
 app.get('/api/saved-recipes', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
-
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
 
-    const { data, error } = await supabase
-      .from('saved_recipes')
-      .select('*')
-      .order('saved_at', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
+    const { data, error } = await supabase.from('saved_recipes').select('*').order('saved_at', { ascending: false });
+    if (error) throw error;
 
     res.json({ savedRecipes: data || [] });
-
   } catch (error: any) {
     console.error('Error en GET /api/saved-recipes:', error);
     const schemaMissing = isSchemaError(error);
     res.status(500).json({
       error: 'Error al consultar recetas favoritas',
-      message: schemaMissing 
-        ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' 
-        : (error.message || 'No se pudo leer la tabla de favoritos en Supabase.'),
+      message: schemaMissing ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' : (error.message || 'No se pudo leer la tabla de favoritos en Supabase.'),
       isSchemaMissing: schemaMissing,
       sql: schemaMissing ? DATABASE_SETUP_SQL : undefined
     });
   }
 });
 
-// 6. ENDPOINT: Delete Saved Recipe (Delete from saved_recipes)
 app.delete('/api/saved-recipes/:id', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
-
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
 
-    const recipeId = req.params.id;
-
-    const { data, error } = await supabase
-      .from('saved_recipes')
-      .delete()
-      .eq('id', recipeId)
-      .select();
-
-    if (error) {
-      throw error;
-    }
+    const { data, error } = await supabase.from('saved_recipes').delete().eq('id', req.params.id).select();
+    if (error) throw error;
 
     res.json({ success: true, deleted: data });
-
   } catch (error: any) {
     console.error(`Error en DELETE /api/saved-recipes/${req.params.id}:`, error);
     const schemaMissing = isSchemaError(error);
     res.status(500).json({
       error: 'Error al eliminar receta favorita',
-      message: schemaMissing 
-        ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' 
-        : (error.message || 'No se pudo eliminar el registro en Supabase.'),
+      message: schemaMissing ? 'La tabla "saved_recipes" no existe en tu base de datos de Supabase.' : (error.message || 'No se pudo eliminar el registro en Supabase.'),
       isSchemaMissing: schemaMissing,
       sql: schemaMissing ? DATABASE_SETUP_SQL : undefined
     });
   }
 });
 
-// 7. ENDPOINT: Fetch All Pantry Scans (For history panel/visuals)
 app.get('/api/scans', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
-
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
 
-    const { data, error } = await supabase
-      .from('pantry_scans')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw error;
-    }
+    const { data, error } = await supabase.from('pantry_scans').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
 
     res.json({ scans: data || [] });
-
   } catch (error: any) {
     console.error('Error en GET /api/scans:', error);
     const schemaMissing = isSchemaError(error);
     res.status(500).json({
       error: 'Error al consultar historial de escaneos',
-      message: schemaMissing 
-        ? 'La tabla "pantry_scans" no existe en tu base de datos de Supabase.' 
-        : (error.message || 'No se pudo leer la tabla de escaneos.'),
+      message: schemaMissing ? 'La tabla "pantry_scans" no existe en tu base de datos de Supabase.' : (error.message || 'No se pudo leer la tabla de escaneos.'),
       isSchemaMissing: schemaMissing,
       sql: schemaMissing ? DATABASE_SETUP_SQL : undefined
     });
@@ -695,9 +549,7 @@ app.get('/api/scans', async (req, res) => {
 // 8. ENDPOINT: Cookbook — browse the local recipe library (no Gemini calls)
 app.get('/api/cookbook', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
@@ -735,9 +587,7 @@ app.get('/api/cookbook', async (req, res) => {
 // 9. ENDPOINT: Cookbook filter options (distinct categories/areas)
 app.get('/api/cookbook/filters', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
@@ -761,9 +611,7 @@ app.get('/api/cookbook/filters', async (req, res) => {
 // 10. ENDPOINT: Cookbook recipe detail
 app.get('/api/cookbook/:id', async (req, res) => {
   try {
-    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) {
-      return;
-    }
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
     if (!supabase) {
       return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
     }
@@ -784,26 +632,4 @@ app.get('/api/cookbook/:id', async (req, res) => {
   }
 });
 
-
-// ================= VITE OR STATIC SERVING =================
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[ChefRefri Server] Servidor iniciado en http://localhost:${PORT}`);
-  });
-}
-
-startServer();
+export default app;

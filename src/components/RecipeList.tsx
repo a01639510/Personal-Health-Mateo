@@ -1,7 +1,8 @@
 import React from 'react';
-import { ChefHat, ArrowRight, CheckCircle2, AlertCircle, ShoppingCart } from 'lucide-react';
+import { ChefHat, ArrowRight, Check, AlertCircle, ShoppingCart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SpoonacularRecipeSummary } from '../types';
+import Skeleton from './Skeleton';
 
 interface RecipeListProps {
   recipes: SpoonacularRecipeSummary[];
@@ -14,154 +15,132 @@ interface RecipeListProps {
 export default function RecipeList({ recipes, onSelectRecipe, onBackToScan, loading, error }: RecipeListProps) {
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center text-center py-20 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
-        <ChefHat className="w-12 h-12 text-emerald-600 animate-bounce mb-4" />
-        <h3 className="font-display font-semibold text-lg text-slate-800 mb-1">Buscando Recetas Compatibles</h3>
-        <p className="text-slate-500 text-sm max-w-sm">
-          Spoonacular está calculando combinaciones óptimas con tus ingredientes...
-        </p>
+      <div className="space-y-4 pt-2">
+        <div className="px-0.5">
+          <h2 className="text-[19px] font-bold text-[var(--text-primary)]">Buscando recetas</h2>
+          <p className="text-[12px] text-[var(--text-primary)]/40">Calculando las mejores combinaciones...</p>
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-[28px] overflow-hidden">
+            <Skeleton className="h-44 w-full rounded-[28px]" />
+            <div className="p-4 space-y-3">
+              <Skeleton className="h-4 w-3/4 rounded-md" />
+              <Skeleton className="h-3 w-1/2 rounded-md" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white border border-slate-200 rounded-3xl p-8 max-w-xl mx-auto text-center space-y-5 shadow-sm">
-        <div className="bg-rose-50 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-rose-100">
-          <AlertCircle className="w-8 h-8 text-rose-500" />
+      <div className="pt-10 text-center space-y-5">
+        <div className="bg-[var(--danger-bg)] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
+          <AlertCircle className="w-7 h-7 text-[#ff3b30]" strokeWidth={1.75} />
         </div>
         <div>
-          <h3 className="font-display font-semibold text-lg text-slate-800 mb-2">{error.message}</h3>
-          {error.details && <p className="text-sm text-slate-500">{error.details}</p>}
+          <h3 className="text-[16px] font-bold text-[var(--text-primary)] mb-1.5">{error.message}</h3>
+          {error.details && <p className="text-[13px] text-[var(--text-primary)]/40 leading-relaxed px-4">{error.details}</p>}
         </div>
         <button
           onClick={onBackToScan}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer shadow-sm"
+          className="bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
         >
-          Volver a Escanear
+          Volver a escanear
         </button>
       </div>
     );
   }
 
-  // Sort recipes: fewest missing first
   const sortedRecipes = [...recipes].sort((a, b) => a.missedIngredientCount - b.missedIngredientCount);
 
   if (sortedRecipes.length === 0) {
     return (
-      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-xl mx-auto space-y-4 shadow-sm">
-        <div className="bg-slate-50 p-4 rounded-full w-14 h-14 mx-auto flex items-center justify-center border border-slate-200">
-          <ChefHat className="w-8 h-8 text-slate-500" />
+      <div className="pt-10 text-center space-y-4">
+        <div className="bg-[var(--bg-surface)] w-14 h-14 mx-auto flex items-center justify-center rounded-full">
+          <ChefHat className="w-7 h-7 text-[var(--text-primary)]/40" strokeWidth={1.75} />
         </div>
-        <h3 className="font-display font-semibold text-lg text-slate-800">No se encontraron recetas</h3>
-        <p className="text-sm text-slate-500">
-          Ninguna receta coincide con tus ingredientes seleccionados. Prueba agregando ingredientes básicos adicionales como aceite, sal, ajo, harina, o verduras comunes.
+        <h3 className="text-[16px] font-bold text-[var(--text-primary)]">No se encontraron recetas</h3>
+        <p className="text-[13px] text-[var(--text-primary)]/40 leading-relaxed px-4">
+          Prueba agregando ingredientes básicos como aceite, sal, ajo o verduras comunes.
         </p>
         <button
           onClick={onBackToScan}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer shadow-sm"
+          className="bg-[var(--accent)] text-[var(--accent-foreground)] font-semibold px-6 py-3 rounded-full text-[13px] cursor-pointer active:scale-[0.98] transition-transform"
         >
-          Añadir Ingredientes
+          Añadir ingredientes
         </button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Info */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 pt-2">
+      <div className="flex items-center justify-between px-0.5">
         <div>
-          <h2 className="font-display font-bold text-xl text-slate-800">Recetas Sugeridas ({sortedRecipes.length})</h2>
-          <p className="text-xs text-slate-500">Ordenadas de mayor a menor coincidencia de ingredientes</p>
+          <h2 className="text-[19px] font-bold text-[var(--text-primary)]">Recetas sugeridas</h2>
+          <p className="text-[12px] text-[var(--text-primary)]/40">{sortedRecipes.length} coincidencias con tu refri</p>
         </div>
         <button
           onClick={onBackToScan}
-          className="text-xs text-emerald-600 hover:text-emerald-700 font-mono font-semibold hover:underline cursor-pointer"
+          className="text-[12px] font-semibold text-[var(--text-primary)]/50 cursor-pointer"
         >
-          ← Agregar más ingredientes
+          Editar
         </button>
       </div>
 
-      {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="space-y-4">
         {sortedRecipes.map((recipe, idx) => {
           const hasAll = recipe.missedIngredientCount === 0;
 
           return (
             <motion.div
               key={recipe.id}
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{ delay: Math.min(idx * 0.05, 0.3) }}
               onClick={() => onSelectRecipe(recipe.id)}
-              className="bg-white border border-slate-200 hover:border-slate-300 rounded-3xl overflow-hidden cursor-pointer hover:shadow-md transition-all group flex flex-col h-full"
+              className="bg-[var(--bg-surface)] rounded-[28px] overflow-hidden cursor-pointer active:scale-[0.99] transition-transform shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
             >
-              {/* Image Section */}
-              <div className="relative h-48 overflow-hidden bg-slate-100 flex-shrink-0">
+              <div className="relative h-44 overflow-hidden bg-[var(--bg-surface)]">
                 <img
                   src={recipe.image}
                   alt={recipe.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                   loading="lazy"
                 />
-                
-                {/* Badge Overlay */}
-                <div className="absolute top-4 left-4">
+
+                <div className="absolute top-3.5 left-3.5">
                   {hasAll ? (
-                    <span className="flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-mono font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 bg-white/95 backdrop-blur text-black text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                      <Check className="w-3 h-3" strokeWidth={3} />
                       Tienes todo
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 bg-amber-500 text-slate-900 text-[10px] font-mono font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shadow-sm">
-                      <ShoppingCart className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 bg-black/75 backdrop-blur text-white text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                      <ShoppingCart className="w-3 h-3" strokeWidth={2.25} />
                       Faltan {recipe.missedIngredientCount}
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Content Section */}
-              <div className="p-5 flex flex-col justify-between flex-grow">
-                <div className="space-y-4">
-                  <h3 className="font-display font-bold text-lg text-slate-800 group-hover:text-emerald-600 transition-colors line-clamp-2 leading-tight">
-                    {recipe.title}
-                  </h3>
+              <div className="p-4 space-y-3">
+                <h3 className="text-[16px] font-bold text-[var(--text-primary)] leading-snug line-clamp-2">
+                  {recipe.title}
+                </h3>
 
-                  {/* Summary of Ingredients matching */}
-                  <div className="space-y-2">
-                    {/* Used ingredients */}
-                    {recipe.usedIngredients && recipe.usedIngredients.length > 0 && (
-                      <div>
-                        <span className="text-[10px] font-mono text-emerald-600 uppercase tracking-wider block mb-1">
-                          Ingredientes que tienes ({recipe.usedIngredientCount}):
-                        </span>
-                        <p className="text-xs text-slate-600 capitalize line-clamp-2">
-                          {recipe.usedIngredients.map(i => i.name).join(', ')}
-                        </p>
-                      </div>
-                    )}
+                {recipe.usedIngredients && recipe.usedIngredients.length > 0 && (
+                  <p className="text-[12px] text-[var(--text-primary)]/40 capitalize line-clamp-1 leading-relaxed">
+                    {recipe.usedIngredients.map(i => i.name).join(' · ')}
+                  </p>
+                )}
 
-                    {/* Missed ingredients */}
-                    {!hasAll && recipe.missedIngredients && recipe.missedIngredients.length > 0 && (
-                      <div className="pt-1">
-                        <span className="text-[10px] font-mono text-amber-600 uppercase tracking-wider block mb-1">
-                          Ingredientes que te faltan ({recipe.missedIngredientCount}):
-                        </span>
-                        <p className="text-xs text-slate-500 capitalize line-clamp-1">
-                          {recipe.missedIngredients.map(i => i.name).join(', ')}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card CTA Footer */}
-                <div className="pt-4 border-t border-slate-100 mt-4 flex items-center justify-between text-xs text-slate-500 font-semibold group-hover:text-slate-800 transition-colors">
-                  <span>Ver preparación y nutrición</span>
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-1 group-hover:text-emerald-600 transition-all" />
+                <div className="pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[12.5px] font-semibold text-[var(--text-primary)]/70">
+                  <span>Ver receta</span>
+                  <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.25} />
                 </div>
               </div>
             </motion.div>

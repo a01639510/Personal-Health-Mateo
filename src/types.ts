@@ -40,6 +40,22 @@ export interface SpoonacularRecipeSummary {
   missedIngredients: { name: string; amount?: number; unit?: string }[];
 }
 
+export interface CookbookRecipe {
+  id: string;
+  external_id: string;
+  title: string;
+  image_url: string;
+  category: string;
+  area: string;
+  tags: string[];
+}
+
+export interface CookbookRecipeDetail extends CookbookRecipe {
+  ingredients: { name: string; measure: string }[];
+  instructions: string;
+  video_url: string;
+}
+
 export interface RecipeDetail {
   id: number;
   title: string;
