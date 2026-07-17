@@ -1,0 +1,6 @@
+{
+  "name": "ChefRefri: Escáner de Refri y Recetas",
+  "description": "Escanea los ingredientes de tu refrigerador por foto y obtén recetas deliciosas y saludables al instante con información nutricional detallada.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

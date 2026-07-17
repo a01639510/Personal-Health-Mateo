@@ -1,0 +1,23 @@
+{
+  "short_name": "ChefRefri",
+  "name": "ChefRefri: Escaneo e Inteligencia de Recetas",
+  "description": "Escanea tu refrigerador para sugerirte recetas al instante.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}
