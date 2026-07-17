@@ -1,15 +1,24 @@
 import React from 'react';
-import { Camera, Heart, History } from 'lucide-react';
+import { Camera, Heart, History, BookOpen, type LucideIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
+export type AppTab = 'scan' | 'favorites' | 'history' | 'cookbook';
+
 interface BottomTabBarProps {
-  activeTab: 'scan' | 'favorites' | 'history';
-  setActiveTab: (tab: 'scan' | 'favorites' | 'history') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
 }
 
-const SIDE_TABS = [
-  { id: 'history' as const, label: 'Historial', icon: History },
-  { id: 'favorites' as const, label: 'Guardadas', icon: Heart },
+interface TabDef {
+  id: AppTab;
+  label: string;
+  icon: LucideIcon;
+}
+
+const LEFT_TABS: TabDef[] = [{ id: 'history', label: 'Historial', icon: History }];
+const RIGHT_TABS: TabDef[] = [
+  { id: 'cookbook', label: 'Recetario', icon: BookOpen },
+  { id: 'favorites', label: 'Guardadas', icon: Heart },
 ];
 
 export default function BottomTabBar({ activeTab, setActiveTab }: BottomTabBarProps) {
@@ -21,14 +30,20 @@ export default function BottomTabBar({ activeTab, setActiveTab }: BottomTabBarPr
         <div className="absolute inset-x-0 bottom-0 h-[58px] bg-[var(--bg-app-translucent)] backdrop-blur-xl border-t border-[var(--border-subtle)]" />
 
         <div className="relative flex items-stretch justify-between h-[58px] px-2">
-          {/* Left tab */}
-          <TabButton tab={SIDE_TABS[0]} isActive={activeTab === SIDE_TABS[0].id} onSelect={setActiveTab} />
+          <div className="flex flex-1">
+            {LEFT_TABS.map((tab) => (
+              <TabButton key={tab.id} tab={tab} isActive={activeTab === tab.id} onSelect={setActiveTab} />
+            ))}
+          </div>
 
           {/* Center FAB spacer */}
           <div className="w-[76px] flex-shrink-0" />
 
-          {/* Right tab */}
-          <TabButton tab={SIDE_TABS[1]} isActive={activeTab === SIDE_TABS[1].id} onSelect={setActiveTab} />
+          <div className="flex flex-1">
+            {RIGHT_TABS.map((tab) => (
+              <TabButton key={tab.id} tab={tab} isActive={activeTab === tab.id} onSelect={setActiveTab} />
+            ))}
+          </div>
         </div>
 
         {/* Elevated center Scan FAB */}
@@ -53,15 +68,13 @@ export default function BottomTabBar({ activeTab, setActiveTab }: BottomTabBarPr
   );
 }
 
-function TabButton({
-  tab,
-  isActive,
-  onSelect,
-}: {
-  tab: { id: 'favorites' | 'history'; label: string; icon: typeof Heart };
+interface TabButtonProps {
+  tab: TabDef;
   isActive: boolean;
-  onSelect: (tab: 'scan' | 'favorites' | 'history') => void;
-}) {
+  onSelect: (tab: AppTab) => void;
+}
+
+const TabButton: React.FC<TabButtonProps> = ({ tab, isActive, onSelect }) => {
   const Icon = tab.icon;
   return (
     <button
@@ -78,7 +91,7 @@ function TabButton({
         />
       )}
       <Icon
-        className="w-[22px] h-[22px] transition-colors"
+        className="w-[20px] h-[20px] transition-colors"
         strokeWidth={isActive ? 2.25 : 1.75}
         color="currentColor"
         fill={isActive && tab.id === 'favorites' ? 'currentColor' : 'none'}
@@ -92,4 +105,4 @@ function TabButton({
       </span>
     </button>
   );
-}
+};

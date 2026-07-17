@@ -522,4 +522,90 @@ app.get('/api/scans', async (req, res) => {
   }
 });
 
+// 8. ENDPOINT: Cookbook — browse the local recipe library (no Gemini calls)
+app.get('/api/cookbook', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { q, category, area, tag, page, limit } = req.query as Record<string, string | undefined>;
+    const pageNum = Math.max(1, parseInt(page || '1', 10) || 1);
+    const limitNum = Math.min(60, Math.max(1, parseInt(limit || '24', 10) || 24));
+    const from = (pageNum - 1) * limitNum;
+    const to = from + limitNum - 1;
+
+    let query = supabase
+      .from('recipes')
+      .select('id, external_id, title, image_url, category, area, tags', { count: 'exact' })
+      .order('title', { ascending: true })
+      .range(from, to);
+
+    if (q) query = query.ilike('title', `%${q}%`);
+    if (category) query = query.eq('category', category);
+    if (area) query = query.eq('area', area);
+    if (tag) query = query.contains('tags', [tag]);
+
+    const { data, error, count } = await query;
+    if (error) throw error;
+
+    res.json({ recipes: data || [], total: count || 0, page: pageNum, limit: limitNum });
+  } catch (error: any) {
+    console.error('Error en GET /api/cookbook:', error);
+    res.status(500).json({
+      error: 'Error al consultar el recetario',
+      message: error.message || 'No se pudo leer la tabla de recetas.'
+    });
+  }
+});
+
+// 9. ENDPOINT: Cookbook filter options (distinct categories/areas)
+app.get('/api/cookbook/filters', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { data, error } = await supabase.from('recipes').select('category, area');
+    if (error) throw error;
+
+    const categories = Array.from(new Set((data || []).map((r: any) => r.category).filter(Boolean))).sort();
+    const areas = Array.from(new Set((data || []).map((r: any) => r.area).filter(Boolean))).sort();
+
+    res.json({ categories, areas });
+  } catch (error: any) {
+    console.error('Error en GET /api/cookbook/filters:', error);
+    res.status(500).json({
+      error: 'Error al obtener los filtros del recetario',
+      message: error.message || 'No se pudieron leer las categorías.'
+    });
+  }
+});
+
+// 10. ENDPOINT: Cookbook recipe detail
+app.get('/api/cookbook/:id', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { data, error } = await supabase.from('recipes').select('*').eq('id', req.params.id).maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      return res.status(404).json({ error: 'Receta no encontrada' });
+    }
+
+    res.json({ recipe: data });
+  } catch (error: any) {
+    console.error(`Error en GET /api/cookbook/${req.params.id}:`, error);
+    res.status(500).json({
+      error: 'Error al obtener la receta',
+      message: error.message || 'No se pudo generar el detalle de la receta.'
+    });
+  }
+});
+
 export default app;

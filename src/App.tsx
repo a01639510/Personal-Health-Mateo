@@ -1,23 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
-import BottomTabBar from './components/BottomTabBar';
+import BottomTabBar, { AppTab } from './components/BottomTabBar';
 import ScanPantry from './components/ScanPantry';
 import RecipeList from './components/RecipeList';
 import RecipeDetails from './components/RecipeDetails';
 import FavoritesList from './components/FavoritesList';
 import ScanHistory from './components/ScanHistory';
+import Cookbook from './components/Cookbook';
+import CookbookDetail from './components/CookbookDetail';
 import { SpoonacularRecipeSummary } from './types';
 import { motion, AnimatePresence } from 'motion/react';
 
-const TAB_TITLES: Record<'scan' | 'favorites' | 'history', string> = {
+const TAB_TITLES: Record<AppTab, string> = {
   scan: 'Escanear',
   favorites: 'Guardadas',
   history: 'Historial',
+  cookbook: 'Recetario',
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'scan' | 'favorites' | 'history'>('scan');
-  const [viewState, setViewState] = useState<'scan' | 'recipe-list' | 'recipe-details'>('scan');
+  const [activeTab, setActiveTab] = useState<AppTab>('scan');
+  const [viewState, setViewState] = useState<'scan' | 'recipe-list' | 'recipe-details' | 'cookbook-details'>('scan');
+  const [selectedCookbookId, setSelectedCookbookId] = useState<string | null>(null);
 
   // Scanned / Loaded ingredients state
   const [scannedIngredients, setScannedIngredients] = useState<string[]>([]);
@@ -125,19 +129,27 @@ export default function App() {
       }
     } else if (viewState === 'recipe-list') {
       setViewState('scan');
+    } else if (viewState === 'cookbook-details') {
+      setViewState('scan');
+      setSelectedCookbookId(null);
     }
+  };
+
+  const handleSelectCookbookRecipe = (id: string) => {
+    setSelectedCookbookId(id);
+    setViewState('cookbook-details');
   };
 
   const handleSaveSuccess = () => {
     setRefreshFavsTrigger(prev => prev + 1);
   };
 
-  const handleTabChange = (tab: 'scan' | 'favorites' | 'history') => {
+  const handleTabChange = (tab: AppTab) => {
     setActiveTab(tab);
     setViewState('scan'); // Reset inner view to root of the tab
   };
 
-  const showGlobalHeader = viewState !== 'recipe-details';
+  const showGlobalHeader = viewState !== 'recipe-details' && viewState !== 'cookbook-details';
   const headerTitle = viewState === 'recipe-list' ? 'Recetas' : TAB_TITLES[activeTab];
 
   return (
@@ -218,6 +230,24 @@ export default function App() {
                 transition={{ duration: 0.15 }}
               >
                 <ScanHistory onLoadIngredients={handleLoadIngredientsFromHistory} />
+              </motion.div>
+            )}
+
+            {activeTab === 'cookbook' && (
+              <motion.div
+                key="cookbook-tab"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+              >
+                {viewState === 'scan' && (
+                  <Cookbook onSelectRecipe={handleSelectCookbookRecipe} />
+                )}
+
+                {viewState === 'cookbook-details' && selectedCookbookId !== null && (
+                  <CookbookDetail recipeId={selectedCookbookId} onBack={handleBack} />
+                )}
               </motion.div>
             )}
           </AnimatePresence>
