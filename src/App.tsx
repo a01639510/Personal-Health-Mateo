@@ -55,6 +55,16 @@ export default function App() {
     }
   }, []);
 
+  // Deep link: si la URL trae ?receta=<id>, abre esa receta del Recetario directamente.
+  useEffect(() => {
+    const recetaId = new URLSearchParams(window.location.search).get('receta');
+    if (recetaId) {
+      setActiveTab('cookbook');
+      setSelectedCookbookId(recetaId);
+      setViewState('cookbook-details');
+    }
+  }, []);
+
   // Fetch saved recipes to keep list of saved IDs in sync
   useEffect(() => {
     fetchSavedIds();
@@ -137,12 +147,14 @@ export default function App() {
     } else if (viewState === 'cookbook-details') {
       setViewState('scan');
       setSelectedCookbookId(null);
+      window.history.pushState({}, '', window.location.pathname);
     }
   };
 
   const handleSelectCookbookRecipe = (id: string) => {
     setSelectedCookbookId(id);
     setViewState('cookbook-details');
+    window.history.pushState({}, '', `?receta=${id}`);
   };
 
   const handleSaveSuccess = () => {

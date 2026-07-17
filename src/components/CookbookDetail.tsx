@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, AlertCircle, Youtube } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Youtube, Share2, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import Skeleton from './Skeleton';
 import NutritionRings from './NutritionRings';
 import { CookbookRecipeDetail } from '../types';
@@ -17,6 +18,7 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
   const [recipe, setRecipe] = useState<CookbookRecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<{ message: string; details?: string } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchDetail();
@@ -99,6 +101,21 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
     .map((p) => p.trim())
     .filter(Boolean);
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/?receta=${recipeId}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: displayTitle, text: `Mira esta receta: ${displayTitle}`, url });
+      } catch {
+        // el usuario canceló el share sheet, no hacemos nada
+      }
+    } else {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="pt-2 pb-2">
       <div className="relative h-80 w-full overflow-hidden rounded-[28px]">
@@ -110,12 +127,20 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/10" />
 
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
           <button
             onClick={onBack}
             className="w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
           >
             <ChevronLeft className="w-5 h-5" color="#0a0a0a" strokeWidth={2.25} />
+          </button>
+
+          <button
+            onClick={handleShare}
+            className="w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+            title="Compartir receta"
+          >
+            <Share2 className="w-[18px] h-[18px]" strokeWidth={2} color="#0a0a0a" />
           </button>
         </div>
 
@@ -133,6 +158,20 @@ export default function CookbookDetail({ recipeId, onBack }: CookbookDetailProps
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {copied && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="mt-4 bg-[var(--accent)] text-[var(--accent-foreground)] px-4 py-3 rounded-2xl flex items-center gap-2.5 text-[13px] font-semibold"
+          >
+            <Check className="w-4 h-4" strokeWidth={2.5} />
+            <span>Link copiado al portapapeles</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {recipe.video_url && (
         <a
