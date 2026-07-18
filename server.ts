@@ -1017,7 +1017,7 @@ app.get('/api/cookbook-search', async (req, res) => {
     const { data, error } = await supabase
       .from('recipes')
       .select('id, title, title_es, image_url, calories, protein_g, carbs_g, fat_g')
-      .ilike('title', `%${q}%`)
+      .or(`title.ilike.%${q}%,title_es.ilike.%${q}%`)
       .limit(20);
     if (error) throw error;
 
