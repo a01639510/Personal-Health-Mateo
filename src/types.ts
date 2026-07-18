@@ -109,10 +109,22 @@ export interface FoodLogEntry {
 export interface UsdaFoodSearchResult {
   fdc_id: number;
   description: string;
+  food_category: string | null;
   kcal_per_100g: number;
   protein_g_per_100g: number;
   carbs_g_per_100g: number;
   fat_g_per_100g: number;
+}
+
+export interface CookbookSearchResult {
+  id: string;
+  title: string;
+  title_es?: string | null;
+  image_url: string;
+  calories: number | null;
+  protein_g: number | null;
+  carbs_g: number | null;
+  fat_g: number | null;
 }
 
 export interface DailyNutritionTotals {

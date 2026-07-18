@@ -956,20 +956,75 @@ app.get('/api/food-search', async (req, res) => {
     }
 
     const q = (req.query.q as string || '').trim();
-    if (!q) return res.json({ foods: [] });
+    const category = (req.query.category as string || '').trim();
+    if (!q && !category) return res.json({ foods: [] });
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('usda_foods')
-      .select('fdc_id, description, kcal_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g')
-      .ilike('description', `%${q}%`)
-      .limit(20);
+      .select('fdc_id, description, food_category, kcal_per_100g, protein_g_per_100g, carbs_g_per_100g, fat_g_per_100g')
+      .limit(200);
+
+    if (q) query = query.ilike('description', `%${q}%`);
+    if (category) query = query.eq('food_category', category);
+
+    const { data, error } = await query;
     if (error) throw error;
 
-    const foods = (data || []).sort((a: any, b: any) => a.description.length - b.description.length);
+    const foods = (data || [])
+      .sort((a: any, b: any) => a.description.length - b.description.length)
+      .slice(0, 30);
     res.json({ foods });
   } catch (error: any) {
     console.error('Error en GET /api/food-search:', error);
     res.status(500).json({ error: 'Error al buscar alimentos', message: error.message || 'No se pudo consultar la base de alimentos.' });
+  }
+});
+
+// 12b. ENDPOINT: categorías disponibles en la referencia USDA (para navegación visual por categoría).
+app.get('/api/food-categories', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const { data, error } = await supabase
+      .from('usda_foods')
+      .select('food_category')
+      .not('food_category', 'is', null)
+      .limit(10000);
+    if (error) throw error;
+
+    const categories = Array.from(new Set((data || []).map((r: any) => r.food_category as string))).sort();
+    res.json({ categories });
+  } catch (error: any) {
+    console.error('Error en GET /api/food-categories:', error);
+    res.status(500).json({ error: 'Error al obtener categorías', message: error.message || 'No se pudieron leer las categorías.' });
+  }
+});
+
+// 12c. ENDPOINT: búsqueda ligera de recetas del Recetario (con nutrición) para el registro de comidas.
+app.get('/api/cookbook-search', async (req, res) => {
+  try {
+    if (!checkEnvKeys(['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'], res)) return;
+    if (!supabase) {
+      return res.status(503).json({ error: 'Cliente de Supabase no inicializado.' });
+    }
+
+    const q = (req.query.q as string || '').trim();
+    if (!q) return res.json({ recipes: [] });
+
+    const { data, error } = await supabase
+      .from('recipes')
+      .select('id, title, title_es, image_url, calories, protein_g, carbs_g, fat_g')
+      .ilike('title', `%${q}%`)
+      .limit(20);
+    if (error) throw error;
+
+    res.json({ recipes: data || [] });
+  } catch (error: any) {
+    console.error('Error en GET /api/cookbook-search:', error);
+    res.status(500).json({ error: 'Error al buscar recetas', message: error.message || 'No se pudo buscar en el recetario.' });
   }
 });
 
